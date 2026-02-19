@@ -11,6 +11,7 @@ import { createAuthRoutes } from './modules/auth/auth.routes';
 import { createWorkspaceRoutes } from './modules/workspace/workspace.routes';
 import { createCredentialRoutes } from './modules/credential/credential.routes';
 import { createCreditRoutes } from './modules/credit/credit.routes';
+import { createEnrichmentRoutes } from './modules/enrichment/enrichment.routes';
 
 export interface AppConfig {
   corsOrigin: string;
@@ -61,6 +62,21 @@ export function createApp(config: AppConfig): express.Express {
 
   // Nested billing/credit routes: /api/v1/workspaces/:id/billing
   app.use('/api/v1/workspaces/:id/billing', authenticate, createCreditRoutes());
+
+  // Enrichment routes
+  const { providerRoutes, jobRoutes, webhookRoutes, recordRoutes } = createEnrichmentRoutes();
+
+  // Provider routes (authenticated)
+  app.use('/api/v1/providers', authenticate, providerRoutes);
+
+  // Enrichment job routes (authenticated, workspace-scoped)
+  app.use('/api/v1/workspaces/:id/enrichment-jobs', authenticate, jobRoutes);
+
+  // Webhook routes (authenticated, workspace-scoped)
+  app.use('/api/v1/workspaces/:id/webhooks', authenticate, webhookRoutes);
+
+  // Enrichment record routes (authenticated, workspace-scoped)
+  app.use('/api/v1/workspaces/:id/enrichment-records', authenticate, recordRoutes);
 
   // 404 catch-all for unknown routes
   app.use((_req, res) => {

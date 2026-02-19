@@ -25,17 +25,45 @@ Morket helps sales and marketing teams enrich their prospect data by orchestrati
 │  → Auth (JWT) → RBAC → Zod Validation → Router          │
 └──────────────────────────┬──────────────────────────────┘
                            │
-        ┌──────────┬───────┴───────┬──────────┐
-        ▼          ▼               ▼          ▼
-   Auth Module  Workspace    Credential   Credit/Billing
-                 Module       Module       Module
-        │          │               │          │
-        └──────────┴───────┬───────┴──────────┘
+   ┌──────────┬────────────┴────────────┬──────────┐
+   ▼          ▼                         ▼          ▼
+Auth      Workspace              Credential   Credit/Billing
+Module     Module                 Module       Module
+   │          │                         │          │
+   └──────────┴────────────┬────────────┴──────────┘
+                           │
                            ▼
-                  PostgreSQL (Aurora)
+              ┌─────────────────────────┐
+              │   Enrichment Module     │
+              │  ┌───────────────────┐  │
+              │  │ Provider Registry │  │
+              │  │ Circuit Breaker   │  │
+              │  │ Webhook Service   │  │
+              │  └───────────────────┘  │
+              └────────────┬────────────┘
+                           │
+              ┌────────────▼────────────┐
+              │    Temporal.io Worker    │
+              │  Workflows + Activities  │
+              └────────────┬────────────┘
+                           │
+          ┌────────────────┼────────────────┬──────────────────┐
+          ▼                ▼                ▼                  ▼
+     Apollo API      Clearbit API     Hunter API     Scraper Service
+                                                    (Python/FastAPI)
+                                                          │
+                                              ┌───────────┼───────────┐
+                                              ▼           ▼           ▼
+                                        Browser Pool  Proxy Mgr  Extractors
+                                        (Playwright)  (Rotation)  (Pluggable)
+                                              │
+                                    ┌─────────┼─────────┐
+                                    ▼         ▼         ▼
+                                LinkedIn  Company    Job Board
+                                Profiles  Websites   Postings
 ```
 
-The backend follows a layered architecture: **Routes → Controllers → Services → Repositories**, with each domain (auth, workspace, credential, credit) as a self-contained module.
+The backend follows a layered architecture: **Routes → Controllers → Services → Repositories**, with each domain (auth, workspace, credential, credit, enrichment) as a self-contained module.
 
 ## Tech Stack
 
@@ -43,29 +71,38 @@ The backend follows a layered architecture: **Routes → Controllers → Service
 |-------|-----------|
 | Backend | Node.js, TypeScript (strict), Express.js |
 | Database (OLTP) | PostgreSQL (Aurora-compatible) |
+| Workflow Engine | Temporal.io (durable enrichment workflows) |
 | Auth | JWT (15min access / 7d refresh) with bcrypt |
 | Encryption | AES-256-GCM with per-workspace key derivation |
-| Validation | Zod schemas at middleware level |
-| Testing | Vitest, fast-check (property-based), supertest |
+| Validation | Zod (backend), Pydantic (scraper) |
+| Testing | Vitest + fast-check (backend), pytest + hypothesis (scraper) |
+| Scraping | Python 3.11+, FastAPI, Playwright (headless Chromium) |
 | Frontend (planned) | React 18+, Zustand, AG Grid, Tailwind CSS |
-| Scraping (planned) | Python 3.11+, Playwright, FastAPI |
-| Workflow (planned) | Temporal.io |
 | Infrastructure | Docker, Terraform, GitHub Actions, AWS |
 
-## Current Status: Module 1 — Core Backend Foundation ✅
+## Current Status: Module 3 — Scraping Microservices 🔄
 
-The foundation is fully implemented with 313 tests passing across 34 test files.
+Modules 1 and 2 are fully implemented with 400 tests passing across 43 test files. Module 3 (Scraping Microservices) is in the requirements phase.
 
 ### What's built
 
+#### Module 1: Core Backend Foundation
 - **JWT Authentication** — Register, login, refresh token rotation, logout. Bcrypt (12 rounds), rate-limited auth endpoints (5/min per IP).
 - **RBAC Middleware** — Role hierarchy (owner > admin > member > viewer), workspace-scoped permissions enforced at the middleware level.
 - **Workspace Management** — CRUD with slug generation, member management (add/remove/update role), last-owner protection.
 - **Encrypted Credential Storage** — AES-256-GCM with HKDF per-workspace key derivation. API responses only expose masked keys (last 4 chars).
 - **Credit/Billing System** — Consumption-based credits with `SELECT FOR UPDATE` concurrency control, auto-recharge, immutable transaction ledger, paginated history.
 - **API Infrastructure** — Consistent JSON envelope responses, X-Request-Id tracing, structured JSON logging, Helmet security headers, CORS, sliding-window rate limiting.
-- **Database Migrations** — 8 sequential migration files covering all tables and indexes.
-- **27 Correctness Properties** — Property-based tests using fast-check validating auth, RBAC, workspace, credential, and credit invariants.
+
+#### Module 2: Enrichment Orchestration
+- **Provider Registry** — In-memory registry with Apollo, Clearbit, and Hunter providers. Each provider has Zod input/output schemas, credit costs, and supported fields.
+- **Provider Adapters** — Pluggable adapter interface (`ProviderAdapter`) with HTTP calls, 30s timeouts, and error mapping.
+- **Circuit Breaker** — Sliding window (10 calls, 5 failure threshold, 60s cooldown) per provider to protect against cascading failures.
+- **Enrichment Jobs** — Create, list, get, and cancel enrichment jobs. Input validation, credit estimation, balance checking, and batch splitting (1000 records max).
+- **Temporal.io Workflows** — Durable enrichment workflows with waterfall provider logic, idempotency keys, cancellation signals, and automatic status tracking.
+- **Webhook Delivery** — HMAC-SHA256 signed webhooks with 10s timeout and 3 retries with exponential backoff (5s, 10s, 20s).
+- **Database Migrations** — 11 sequential migration files covering all tables and indexes.
+- **33 Correctness Properties** — Property-based tests using fast-check validating circuit breaker, waterfall, idempotency, and credit invariants.
 
 ### API Endpoints
 
@@ -96,8 +133,47 @@ GET    /api/v1/workspaces/:id/billing              # member+
 POST   /api/v1/workspaces/:id/billing/credits      # owner
 GET    /api/v1/workspaces/:id/billing/transactions  # member+
 
+# Providers (authenticated)
+GET    /api/v1/providers                           # list all providers
+GET    /api/v1/providers/:providerSlug             # provider details
+
+# Enrichment Jobs (authenticated)
+POST   /api/v1/workspaces/:id/enrichment-jobs              # member+
+GET    /api/v1/workspaces/:id/enrichment-jobs              # member+
+GET    /api/v1/workspaces/:id/enrichment-jobs/:jobId       # member+
+POST   /api/v1/workspaces/:id/enrichment-jobs/:jobId/cancel # member+
+GET    /api/v1/workspaces/:id/enrichment-jobs/:jobId/records # member+
+
+# Enrichment Records (authenticated)
+GET    /api/v1/workspaces/:id/enrichment-records/:recordId  # member+
+
+# Webhooks (authenticated)
+POST   /api/v1/workspaces/:id/webhooks             # admin+
+GET    /api/v1/workspaces/:id/webhooks             # member+
+DELETE /api/v1/workspaces/:id/webhooks/:webhookId   # admin+
+
 # Health
 GET    /api/v1/health
+```
+
+### Scraper Service Endpoints (packages/scraper — Module 3)
+
+```
+# Scrape Tasks (service-to-service, X-Service-Key auth)
+POST   /api/v1/scrape                          # async scrape task
+POST   /api/v1/scrape/sync                     # sync scrape (60s timeout)
+GET    /api/v1/scrape/:taskId                   # task status + result
+
+# Scrape Jobs (batch)
+POST   /api/v1/scrape/batch                    # batch up to 100 targets
+GET    /api/v1/scrape/jobs/:jobId              # job status + progress
+GET    /api/v1/scrape/jobs/:jobId/results      # completed task results
+POST   /api/v1/scrape/jobs/:jobId/cancel       # cancel queued tasks
+
+# Health & Observability
+GET    /health                                  # service + pool + proxy status
+GET    /readiness                               # browser pool + proxy readiness
+GET    /metrics                                 # queue depth, active workers, task stats
 ```
 
 All responses follow the envelope format:
@@ -116,6 +192,9 @@ All responses follow the envelope format:
 
 - Node.js 18+
 - PostgreSQL 15+
+- Temporal.io server (for enrichment workflows)
+- Python 3.11+ (for scraper service)
+- Playwright (installed via `playwright install chromium`)
 
 ### Setup
 
@@ -158,36 +237,67 @@ CORS_ORIGIN=http://localhost:5173
 ## Project Structure
 
 ```
-packages/backend/
-├── src/
-│   ├── config/env.ts              # Zod-validated env config
-│   ├── middleware/                 # Auth, RBAC, validation, rate limiting, logging, errors
-│   ├── modules/
-│   │   ├── auth/                  # User registration, login, JWT, refresh tokens
-│   │   ├── workspace/             # Workspace CRUD, membership management
-│   │   ├── credential/            # Encrypted API credential storage
-│   │   └── credit/                # Billing, credits, transaction ledger
-│   ├── shared/                    # DB pool, encryption, errors, envelope, logger, types
-│   ├── app.ts                     # Express app assembly
-│   └── server.ts                  # Entry point
-├── migrations/                    # Sequential PostgreSQL migrations
-└── tests/
-    ├── integration/               # End-to-end HTTP flow tests
-    └── property/                  # fast-check property-based tests
+packages/
+├── backend/                           # Express.js API (Modules 1 & 2)
+│   ├── src/
+│   │   ├── config/env.ts              # Zod-validated env config
+│   │   ├── middleware/                 # Auth, RBAC, validation, rate limiting, logging, errors
+│   │   ├── modules/
+│   │   │   ├── auth/                  # User registration, login, JWT, refresh tokens
+│   │   │   ├── workspace/             # Workspace CRUD, membership management
+│   │   │   ├── credential/            # Encrypted API credential storage
+│   │   │   ├── credit/                # Billing, credits, transaction ledger
+│   │   │   └── enrichment/            # Enrichment orchestration (Module 2)
+│   │   │       ├── adapters/          # Provider adapters (Apollo, Clearbit, Hunter)
+│   │   │       ├── temporal/          # Temporal.io client, activities, workflows, worker
+│   │   │       ├── circuit-breaker.ts # Sliding window circuit breaker
+│   │   │       ├── provider-registry.ts # In-memory provider registry
+│   │   │       ├── job.repository.ts  # Enrichment job persistence
+│   │   │       ├── record.repository.ts # Enrichment record persistence
+│   │   │       ├── webhook.repository.ts # Webhook subscription persistence
+│   │   │       ├── enrichment.service.ts # Job lifecycle orchestration
+│   │   │       ├── webhook.service.ts # Webhook delivery with HMAC + retries
+│   │   │       ├── enrichment.controller.ts # HTTP handlers
+│   │   │       ├── enrichment.routes.ts # Route factories
+│   │   │       └── enrichment.schemas.ts # Zod validation schemas
+│   │   ├── shared/                    # DB pool, encryption, errors, envelope, logger, types
+│   │   ├── app.ts                     # Express app assembly
+│   │   └── server.ts                  # Entry point
+│   ├── migrations/                    # 11 sequential PostgreSQL migrations
+│   └── tests/
+│       ├── integration/               # End-to-end HTTP flow tests
+│       └── property/                  # fast-check property-based tests
+│
+└── scraper/                           # Python scraping service (Module 3)
+    ├── src/
+    │   ├── config/                    # Pydantic Settings, domain policies (YAML)
+    │   ├── routers/                   # FastAPI route handlers
+    │   ├── services/                  # Task queue, job orchestration
+    │   ├── browser/                   # Browser pool, fingerprint randomizer
+    │   ├── extractors/                # Pluggable page extractors (linkedin, company, job)
+    │   ├── proxy/                     # Proxy manager, rotation, health checks
+    │   ├── resilience/                # Circuit breaker, domain rate limiter
+    │   ├── integration/               # Credential client, webhook callbacks
+    │   ├── models/                    # Pydantic request/response models, normalizers
+    │   └── main.py                    # FastAPI app entry point
+    ├── tests/                         # pytest + hypothesis tests
+    ├── Dockerfile                     # Multi-stage production build
+    ├── docker-compose.yml             # Resource-limited container config
+    └── pyproject.toml                 # Python project config (Black, Ruff, pytest)
 ```
 
 ## Testing
 
 ```bash
-npm test              # Run all 313 tests
+npm test              # Run all 400 tests
 npm run test:watch    # Watch mode
 npm run test:coverage # With coverage report
 ```
 
 The test suite includes:
-- **Unit tests** — Schema validation, error classes, middleware behavior, service logic
-- **Property-based tests** — 27 correctness properties with 100+ iterations each (fast-check)
-- **Integration tests** — Full HTTP flows: register → login → workspace → credentials → billing
+- **Unit tests** — Schema validation, error classes, middleware behavior, service logic, adapter behavior
+- **Property-based tests** — 33 correctness properties with 100+ iterations each (fast-check) covering auth, RBAC, workspace, credential, credit, circuit breaker, waterfall enrichment, and idempotency
+- **Integration tests** — Full HTTP flows: register → login → workspace → credentials → billing → enrichment jobs → webhooks → providers
 
 ## Roadmap
 
@@ -198,31 +308,42 @@ Express.js API gateway, PostgreSQL schema, JWT auth with refresh rotation, RBAC,
 
 ---
 
-### 🔲 Module 2: Enrichment Orchestration
-> *Status: Planned*
+### ✅ Module 2: Enrichment Orchestration
+> *Status: Complete*
 
 Temporal.io workflow engine for orchestrating multi-step data enrichment pipelines. Each enrichment action consumes credits and calls external data providers using stored credentials.
 
 - Temporal.io worker and workflow definitions
-- Enrichment action registry (Apollo, Clearbit, LinkedIn, etc.)
-- Waterfall enrichment (try provider A, fall back to B)
+- Provider adapter registry (Apollo, Clearbit, Hunter) with pluggable interface
+- Waterfall enrichment (try provider A, fall back to B) with idempotency keys
 - Credit consumption per action with rollback on failure
-- Webhook callbacks for async enrichment results
-- Job status tracking and retry logic
+- Circuit breaker (sliding window, 5 failure threshold, 60s cooldown)
+- Webhook callbacks with HMAC-SHA256 signatures and retry logic
+- Job status tracking, batch splitting (1000 records max), and cancellation
+- 6 property-based correctness tests for waterfall, idempotency, circuit breaker, and credits
 
 ---
 
-### 🔲 Module 3: Scraping Microservices
-> *Status: Planned*
+### 🔄 Module 3: Scraping Microservices
+> *Status: In Progress (Requirements Phase)*
 
-Python/Playwright-based scraping services for data sources that don't offer APIs. Runs as isolated microservices communicating via RabbitMQ.
+Python/FastAPI/Playwright scraping service for data sources without APIs. Runs as a standalone microservice communicating with the backend via REST API. Acts as an enrichment provider callable by Temporal.io workflows.
 
-- FastAPI scraping service with Playwright browser automation
-- Anti-detection: proxy rotation, fingerprint randomization, rate limiting
-- Credential retrieval from Module 1's encrypted storage
-- Result normalization and schema validation
-- Docker containerization with resource limits
-- Circuit breaker pattern for external service failures
+- FastAPI service with Pydantic validation and OpenAPI docs
+- Playwright headless Chromium browser pool (5–20 instances, auto-recycling)
+- Pluggable page extractors: LinkedIn profiles, company websites, job postings
+- Anti-detection: fingerprint randomization, webdriver masking, human-like delays
+- Proxy rotation with health monitoring and per-domain cooldowns
+- Per-domain rate limiting (token bucket) with YAML policy overrides and robots.txt compliance
+- Circuit breaker per target domain (sliding window, 120s cooldown)
+- Credential retrieval from backend with in-memory caching (5min TTL)
+- Result normalization into Pydantic models matching enrichment pipeline schemas
+- Async task queue with priority scheduling and concurrency control
+- Batch processing (max 100 targets) with job lifecycle management
+- HMAC-SHA256 signed webhook callbacks with retry logic
+- Docker multi-stage build with resource limits (2 CPU, 4GB RAM)
+- Structured JSON logging, /metrics and /health endpoints
+- 15 requirements with 97 acceptance criteria
 
 ---
 
