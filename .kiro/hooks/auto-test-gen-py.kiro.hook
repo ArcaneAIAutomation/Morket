@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Auto Generate Tests (Python)",
+  "description": "When a Python file in the scraping microservice directory is saved, automatically review and generate or update corresponding pytest tests for scraping logic and data extraction functions.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "services/scraper/**/*.py"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Review the edited Python file. If it contains scraping logic, data extraction functions, or API endpoints, check if corresponding pytest tests exist. If not, create them using pytest with appropriate fixtures. If tests exist, verify coverage of current implementation. Focus on: input/output validation, error handling, mock external calls. Use pydantic model validation where applicable."
+  }
+}

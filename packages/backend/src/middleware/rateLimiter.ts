@@ -1,0 +1,49 @@
+import { Request, Response, NextFunction } from 'express';
+import { RateLimitError } from '../shared/errors';
+
+interface RateLimiterOptions {
+  windowMs: number;
+  maxRequests: number;
+}
+
+// Each limiter instance owns its own Map so they don't share timestamp counts.
+const allMaps: Map<string, number[]>[] = [];
+
+export function createRateLimiter({ windowMs, maxRequests }: RateLimiterOptions) {
+  const ipTimestamps = new Map<string, number[]>();
+  allMaps.push(ipTimestamps);
+
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    const ip = req.ip ?? 'unknown';
+    const now = Date.now();
+    const windowStart = now - windowMs;
+
+    // Get existing timestamps or initialize
+    const timestamps = ipTimestamps.get(ip) ?? [];
+
+    // Remove expired entries (outside the current window)
+    const valid = timestamps.filter((t) => t > windowStart);
+
+    if (valid.length >= maxRequests) {
+      ipTimestamps.set(ip, valid);
+      throw new RateLimitError('Too many requests, please try again later');
+    }
+
+    valid.push(now);
+    ipTimestamps.set(ip, valid);
+    next();
+  };
+}
+
+/** Auth routes: 5 requests per minute */
+export const authRateLimiter = createRateLimiter({ windowMs: 60000, maxRequests: 5 });
+
+/** General routes: 100 requests per minute */
+export const generalRateLimiter = createRateLimiter({ windowMs: 60000, maxRequests: 100 });
+
+/** Exposed for testing — clears all stored IP timestamps across all limiter instances */
+export function _resetRateLimiterState(): void {
+  for (const map of allMaps) {
+    map.clear();
+  }
+}

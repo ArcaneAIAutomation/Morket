@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Auto Generate Tests (TypeScript)",
+  "description": "When a TypeScript file in the backend src directory is saved, automatically review the file and generate or update corresponding unit tests for API routes and data transformation logic.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/**/*.ts"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Review the edited TypeScript file. If it contains API route handlers or data transformation functions, check if a corresponding .test.ts file exists. If not, create one with unit tests covering the core logic. If tests already exist, verify they still cover the current implementation. Focus on: input validation, error handling, expected outputs, and edge cases. Do NOT generate tests for simple type definitions or interfaces."
+  }
+}
