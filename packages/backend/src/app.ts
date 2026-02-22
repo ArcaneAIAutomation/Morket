@@ -22,6 +22,7 @@ import { createIntegrationRoutes } from './modules/integration/integration.route
 import { createDataOpsRoutes } from './modules/data-ops/data-ops.routes';
 import { createWorkflowRoutes } from './modules/workflow/workflow.routes';
 import { createAiRoutes } from './modules/ai/ai.routes';
+import { createTeamRoutes } from './modules/team/team.routes';
 
 export interface AppConfig {
   corsOrigin: string;
@@ -145,6 +146,11 @@ export function createApp(config: AppConfig): express.Express {
 
   // AI/ML intelligence routes (authenticated, workspace-scoped)
   app.use('/api/v1/workspaces/:id/ai', authenticate, createAiRoutes());
+
+  // Team & collaboration routes
+  const { workspaceRoutes: teamWorkspaceRoutes, publicRoutes: teamPublicRoutes } = createTeamRoutes();
+  app.use('/api/v1/workspaces/:id/team', authenticate, teamWorkspaceRoutes);
+  app.use('/api/v1/invitations', teamPublicRoutes);
 
   // 404 catch-all for unknown routes
   app.use((_req, res) => {
