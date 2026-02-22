@@ -10,6 +10,7 @@ import { successResponse, errorResponse } from './shared/envelope';
 import { healthCheck as clickHouseHealthCheck } from './clickhouse/client';
 import { healthCheck as openSearchHealthCheck } from './modules/search/opensearch/client';
 import { redisHealthCheck } from './cache/redis';
+import { getMetrics } from './observability/metrics';
 import { createAuthRoutes } from './modules/auth/auth.routes';
 import { createWorkspaceRoutes } from './modules/workspace/workspace.routes';
 import { createCredentialRoutes } from './modules/credential/credential.routes';
@@ -76,6 +77,34 @@ export function createApp(config: AppConfig): express.Express {
       opensearch: osStatus,
       redis: redisHealthy ? 'ok' : 'unavailable',
     }));
+  });
+
+  // Readiness check (public — for container orchestrators)
+  app.get('/api/v1/readiness', async (_req, res) => {
+    const chHealthy = await clickHouseHealthCheck();
+    const redisHealthy = await redisHealthCheck();
+
+    let osStatus: string = 'unavailable';
+    try {
+      const osHealth = await openSearchHealthCheck();
+      osStatus = osHealth.status;
+    } catch {
+      // Non-blocking
+    }
+
+    const allHealthy = chHealthy && redisHealthy && osStatus !== 'unavailable';
+    res.status(allHealthy ? 200 : 503).json(successResponse({
+      ready: allHealthy,
+      postgres: 'ok', // If we got here, Express is running = DB pool is initialized
+      clickhouse: chHealthy ? 'ok' : 'unavailable',
+      opensearch: osStatus,
+      redis: redisHealthy ? 'ok' : 'unavailable',
+    }));
+  });
+
+  // Metrics endpoint (public — for monitoring systems)
+  app.get('/api/v1/metrics', (_req, res) => {
+    res.json(successResponse(getMetrics()));
   });
 
   // Auth routes (public — rate limiting handled within auth router at 5/min)
