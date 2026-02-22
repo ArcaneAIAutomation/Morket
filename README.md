@@ -8,9 +8,13 @@ Morket helps sales and marketing teams enrich their prospect data by orchestrati
 
 - **Multi-tenant workspaces** to organize enrichment activities
 - **Encrypted credential storage** for third-party API keys
-- **Consumption-based billing** with credit tracking
-- **Role-based access control** across workspace members
-- **A spreadsheet-like UI** for managing and enriching data (coming soon)
+- **Consumption-based billing** with Stripe subscriptions and credit packs
+- **Role-based access control** across workspace members (owner, admin, member, viewer, billing_admin)
+- **A spreadsheet-like UI** for managing and enriching data (AG Grid with 100k+ row support)
+- **CRM integrations** with Salesforce and HubSpot (OAuth2, bi-directional sync)
+- **Visual workflow builder** for multi-step enrichment pipelines
+- **AI-powered intelligence** — quality scoring, field mapping, duplicate detection, natural language queries
+- **Web scraping** via headless Chromium for data sources without APIs
 
 ## Architecture
 
@@ -63,7 +67,7 @@ Module     Module                 Module       Module
                                 Profiles  Websites   Postings
 ```
 
-The backend follows a layered architecture: **Routes → Controllers → Services → Repositories**, with each domain (auth, workspace, credential, credit, enrichment) as a self-contained module.
+The backend follows a layered architecture: **Routes → Controllers → Services → Repositories**, with each domain (auth, workspace, credential, credit, enrichment, billing, integration, data-ops, workflow, ai, team, analytics, search, replication) as a self-contained module.
 
 ## Tech Stack
 
@@ -71,14 +75,18 @@ The backend follows a layered architecture: **Routes → Controllers → Service
 |-------|-----------|
 | Backend | Node.js, TypeScript (strict), Express.js |
 | Database (OLTP) | PostgreSQL (Aurora-compatible) |
+| Database (OLAP) | ClickHouse (ReplacingMergeTree) |
+| Search | OpenSearch/ElasticSearch |
+| Cache | Redis (ioredis) |
 | Workflow Engine | Temporal.io (durable enrichment workflows) |
+| Billing | Stripe (subscriptions, credit packs, webhooks) |
 | Auth | JWT (15min access / 7d refresh) with bcrypt |
 | Encryption | AES-256-GCM with per-workspace key derivation |
 | Validation | Zod (backend), Pydantic (scraper) |
 | Testing | Vitest + fast-check (backend), pytest + hypothesis (scraper) |
 | Scraping | Python 3.11+, FastAPI, Playwright (headless Chromium) |
-| Frontend (planned) | React 18+, Zustand, AG Grid, Tailwind CSS |
-| Infrastructure | Docker, Terraform, GitHub Actions, AWS |
+| Frontend | React 18+, Zustand, AG Grid, Tailwind CSS |
+| Infrastructure | Docker, Terraform, GitHub Actions, AWS (ECS, Aurora, ElastiCache, OpenSearch, S3, CloudFront) |
 
 ## Current Status: Module 8 — Product Enhancements & Growth Features ✅
 
@@ -151,6 +159,23 @@ GET    /api/v1/workspaces/:id/enrichment-records/:recordId  # member+
 POST   /api/v1/workspaces/:id/webhooks             # admin+
 GET    /api/v1/workspaces/:id/webhooks             # member+
 DELETE /api/v1/workspaces/:id/webhooks/:webhookId   # admin+
+
+# Analytics (authenticated, workspace-scoped)
+GET    /api/v1/workspaces/:id/analytics/enrichment   # enrichment success rates
+GET    /api/v1/workspaces/:id/analytics/credits       # credit usage analytics
+GET    /api/v1/workspaces/:id/analytics/export        # CSV export
+
+# Search (authenticated, workspace-scoped)
+POST   /api/v1/workspaces/:id/search                  # full-text search
+GET    /api/v1/workspaces/:id/search/suggest           # typeahead/autocomplete
+
+# Search Admin (authenticated, admin only)
+POST   /api/v1/admin/search/reindex                    # trigger reindex
+GET    /api/v1/admin/search/status                     # index status
+
+# Admin DLQ (authenticated, admin only)
+GET    /api/v1/admin/analytics/dlq                     # dead letter queue entries
+POST   /api/v1/admin/analytics/dlq/:id/retry           # retry failed event
 
 # Health
 GET    /api/v1/health
@@ -258,6 +283,7 @@ All responses follow the envelope format:
 
 - Node.js 18+
 - PostgreSQL 15+
+- Redis 7+ (optional — backend degrades gracefully without it)
 - Temporal.io server (for enrichment workflows)
 - Python 3.11+ (for scraper service)
 - Playwright (installed via `playwright install chromium`)
@@ -266,7 +292,7 @@ All responses follow the envelope format:
 
 ```bash
 # Clone
-git clone https://github.com/<your-username>/Morket.git
+git clone https://github.com/ArcaneAIAutomation/Morket.git
 cd Morket
 
 # Install dependencies
@@ -298,60 +324,70 @@ JWT_ACCESS_EXPIRY=15m
 JWT_REFRESH_EXPIRY=7d
 ENCRYPTION_MASTER_KEY=<64 hex chars>
 CORS_ORIGIN=http://localhost:5173
+REDIS_URL=redis://localhost:6379
+LOG_LEVEL=info
+CLICKHOUSE_URL=http://localhost:8123
+OPENSEARCH_NODE=http://localhost:9200
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 ## Project Structure
 
 ```
 packages/
-├── backend/                           # Express.js API (Modules 1 & 2)
+├── backend/                           # Express.js API (Modules 1–2, 5–6, 8)
 │   ├── src/
+│   │   ├── cache/                     # Redis client + generic cache layer
+│   │   ├── clickhouse/                # ClickHouse client + health check
 │   │   ├── config/env.ts              # Zod-validated env config
 │   │   ├── middleware/                 # Auth, RBAC, validation, rate limiting, logging, errors
+│   │   ├── observability/             # Structured JSON logger + in-memory metrics
 │   │   ├── modules/
 │   │   │   ├── auth/                  # User registration, login, JWT, refresh tokens
 │   │   │   ├── workspace/             # Workspace CRUD, membership management
 │   │   │   ├── credential/            # Encrypted API credential storage
-│   │   │   ├── credit/                # Billing, credits, transaction ledger
-│   │   │   ├── enrichment/            # Enrichment orchestration (Module 2)
-│   │   │   │   ├── adapters/          # Provider adapters (Apollo, Clearbit, Hunter)
-│   │   │   │   ├── temporal/          # Temporal.io client, activities, workflows, worker
-│   │   │   │   ├── circuit-breaker.ts # Sliding window circuit breaker
-│   │   │   │   ├── provider-registry.ts # In-memory provider registry
-│   │   │   │   └── ...               # job/record/webhook repos, service, controller, routes, schemas
+│   │   │   ├── credit/                # Credits, transaction ledger
+│   │   │   ├── enrichment/            # Enrichment orchestration (adapters, temporal, circuit breaker)
 │   │   │   ├── billing/               # Stripe subscriptions, credit purchases, webhooks
 │   │   │   ├── integration/           # CRM integrations (Salesforce, HubSpot) with OAuth2
-│   │   │   ├── data-ops/             # CSV import/export, dedup, hygiene, saved views
-│   │   │   ├── workflow/             # Visual workflow builder backend (CRUD, versioning, execution)
-│   │   │   ├── ai/                   # AI/ML: quality scoring, field mapping, dedup detection, NL query
+│   │   │   ├── data-ops/             # CSV import/export, dedup, hygiene, saved views, activity log
+│   │   │   ├── workflow/             # Workflow builder (CRUD, versioning, execution, templates, cron)
+│   │   │   ├── ai/                   # Quality scoring, field mapping, dedup detection, NL query
 │   │   │   ├── team/                 # Activity feed, audit log, workspace invitations
 │   │   │   ├── analytics/            # ClickHouse analytics queries + CSV export
 │   │   │   ├── search/               # OpenSearch full-text search + admin reindex
 │   │   │   └── replication/          # CDC pipeline + dead letter queue
-│   │   ├── shared/                    # DB pool, encryption, errors, envelope, logger, types
+│   │   ├── shared/                    # DB pool, encryption, errors, envelope, types
 │   │   ├── app.ts                     # Express app assembly
-│   │   └── server.ts                  # Entry point
-│   ├── migrations/                    # 11 sequential PostgreSQL migrations
+│   │   └── index.ts                   # Entry point
+│   ├── migrations/                    # 22 sequential PostgreSQL migrations + ClickHouse migrations
 │   └── tests/
 │       ├── integration/               # End-to-end HTTP flow tests
 │       └── property/                  # fast-check property-based tests
 │
-└── scraper/                           # Python scraping service (Module 3)
-    ├── src/
-    │   ├── config/                    # Pydantic Settings, domain policies (YAML)
-    │   ├── routers/                   # FastAPI route handlers
-    │   ├── services/                  # Task queue, job orchestration
-    │   ├── browser/                   # Browser pool, fingerprint randomizer
-    │   ├── extractors/                # Pluggable page extractors (linkedin, company, job)
-    │   ├── proxy/                     # Proxy manager, rotation, health checks
-    │   ├── resilience/                # Circuit breaker, domain rate limiter
-    │   ├── integration/               # Credential client, webhook callbacks
-    │   ├── models/                    # Pydantic request/response models, normalizers
-    │   └── main.py                    # FastAPI app entry point
-    ├── tests/                         # pytest + hypothesis tests
-    ├── Dockerfile                     # Multi-stage production build
-    ├── docker-compose.yml             # Resource-limited container config
-    └── pyproject.toml                 # Python project config (Black, Ruff, pytest)
+├── scraper/                           # Python scraping service (Module 3)
+│   ├── src/
+│   │   ├── config/                    # Pydantic Settings, domain policies (YAML)
+│   │   ├── routers/                   # FastAPI route handlers
+│   │   ├── services/                  # Task queue, job orchestration
+│   │   ├── browser/                   # Browser pool, fingerprint randomizer
+│   │   ├── extractors/                # Pluggable page extractors (linkedin, company, job)
+│   │   ├── proxy/                     # Proxy manager, rotation, health checks
+│   │   ├── resilience/                # Circuit breaker, domain rate limiter
+│   │   ├── integration/               # Credential client, webhook callbacks
+│   │   ├── models/                    # Pydantic request/response models, normalizers
+│   │   └── main.py                    # FastAPI app entry point
+│   ├── tests/                         # pytest + hypothesis tests
+│   └── pyproject.toml                 # Python project config (Black, Ruff, pytest)
+│
+└── frontend/                          # React spreadsheet UI (Module 4)
+    └── src/                           # React 18+, Zustand, AG Grid, Tailwind CSS
+
+docker/                                # Dockerfiles for backend, scraper, frontend + nginx config
+terraform/                             # AWS IaC — 13 reusable modules
+.github/                               # CI/CD pipelines (GitHub Actions)
+docker-compose.yml                     # Full local dev stack
 ```
 
 ## Testing

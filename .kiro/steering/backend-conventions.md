@@ -16,18 +16,25 @@ Each domain module lives in `src/modules/<name>/` and contains:
 - `<name>.schemas.ts` — Zod schemas for body, params, query validation + exported inferred types
 - `<name>.repository.ts` — Database access with parameterized queries, snake_case → camelCase row mapping
 
-The enrichment module extends this with additional sub-directories:
-- `adapters/` — Provider adapter implementations (apollo, clearbit, hunter) + shared `types.ts`
-- `temporal/` — Temporal.io client, activities, workflows, and worker
-- `circuit-breaker.ts` — In-memory sliding window circuit breaker
-- `provider-registry.ts` — In-memory provider registry with Zod schemas and credit costs
+Some modules have additional files:
+- `adapters/` — Provider adapter implementations (enrichment module: apollo, clearbit, hunter) + shared `types.ts`
+- `temporal/` — Temporal.io client, activities, workflows, and worker (enrichment module)
+- `circuit-breaker.ts` — In-memory sliding window circuit breaker (enrichment module)
+- `provider-registry.ts` — In-memory provider registry with Zod schemas and credit costs (enrichment module)
+- `opensearch/` — OpenSearch client and index management (search module)
+- `similarity.ts`, `field-mapper.ts` — AI/ML utilities (ai module)
 
 ## Key Patterns
 
 - Controllers use factory functions: `export function createXxxController() { return { ... } }`
 - Routes use factory functions: `export function createXxxRoutes(): Router { ... }`
-- Nested routes (credentials, billing, enrichment jobs, webhooks, records) use `Router({ mergeParams: true })` to access parent `:id` param
-- Multi-router modules (enrichment) return an object of routers: `{ providerRoutes, jobRoutes, webhookRoutes, recordRoutes }`
+- Nested routes (credentials, billing, enrichment jobs, webhooks, records, data-ops, workflows, ai, team) use `Router({ mergeParams: true })` to access parent `:id` param
+- Multi-router modules return an object of routers:
+  - Enrichment: `{ providerRoutes, jobRoutes, webhookRoutes, recordRoutes }`
+  - Billing: `{ planRoutes, workspaceBillingRoutes, webhookRoutes }`
+  - Integration: `{ publicRoutes, workspaceRoutes }`
+  - Search: `{ searchRoutes, adminSearchRoutes }`
+  - Team: `{ workspaceRoutes, publicRoutes }`
 - Services import repositories as `import * as xxxRepo from './xxx.repository'`
 - All repository functions return camelCase interfaces mapped from snake_case DB rows
 - Repository row interfaces are private; only the camelCase domain interface is exported
@@ -50,6 +57,20 @@ The enrichment module extends this with additional sub-directories:
 - Unknown errors become 500 with generic message; details logged internally
 - Auth middleware errors use `next(err)` pattern (Express 4 doesn't catch async rejections)
 
+## Caching
+
+- Redis client singleton with lazy connect (ioredis) in `src/cache/redis.ts`
+- Generic cache layer in `src/cache/cache.ts`: get/set/delete with TTL, pattern invalidation
+- Domain-specific helpers: workspace config (5min), user session (15min), provider health (1min)
+- All cache operations wrapped in try/catch — silent failures when Redis is unavailable
+- Redis health check integrated into /api/v1/health endpoint
+
+## Observability
+
+- Structured JSON logger in `src/observability/logger.ts` with configurable LOG_LEVEL
+- In-memory metrics in `src/observability/metrics.ts`: request/error counters, avg response time, memory usage
+- GET /api/v1/metrics and GET /api/v1/readiness endpoints in app.ts
+
 ## Testing
 
 - Unit tests: co-located as `<file>.test.ts`, mock repositories with `vi.mock()`
@@ -67,6 +88,40 @@ The enrichment module extends this with additional sub-directories:
 | Credential | `src/modules/credential/` | ✅ Complete |
 | Credit | `src/modules/credit/` | ✅ Complete |
 | Enrichment | `src/modules/enrichment/` | ✅ Complete |
+| Analytics | `src/modules/analytics/` | ✅ Complete |
+| Search | `src/modules/search/` | ✅ Complete |
+| Replication | `src/modules/replication/` | ✅ Complete |
+| Billing | `src/modules/billing/` | ✅ Complete |
+| Integration | `src/modules/integration/` | ✅ Complete |
+| Data Ops | `src/modules/data-ops/` | ✅ Complete |
+| Workflow | `src/modules/workflow/` | ✅ Complete |
+| AI | `src/modules/ai/` | ✅ Complete |
+| Team | `src/modules/team/` | ✅ Complete |
+
+## Shared Infrastructure
+
+| Component | Path | Purpose |
+|-----------|------|---------|
+| Cache | `src/cache/` | Redis client + generic cache layer |
+| Observability | `src/observability/` | Structured logger + metrics |
+| ClickHouse | `src/clickhouse/` | ClickHouse client + health check |
+| Config | `src/config/env.ts` | Zod-validated environment config |
+| Middleware | `src/middleware/` | Auth, RBAC, validation, rate limiting, logging, errors, requestId |
+| Shared | `src/shared/` | DB pool, encryption, errors, envelope, types |
+
+## Migrations
+
+22 sequential PostgreSQL migrations (001–022) plus ClickHouse migrations:
+- 001–008: Core tables (users, workspaces, memberships, refresh_tokens, api_credentials, billing, credit_transactions, indexes)
+- 009–011: Enrichment (enrichment_jobs, enrichment_records, webhook_subscriptions)
+- 012–013: Replication (dead_letter_queue, replication_triggers)
+- 014–016: Search (search_index_status, search_reindex_jobs, search_notify_triggers)
+- 017: Stripe billing tables
+- 018: Integration tables (OAuth tokens, field mappings, sync history)
+- 019: Data operations (saved_views, record_activity_log)
+- 020: Workflows (workflows, workflow_versions, workflow_runs)
+- 021: AI/ML (quality_scores)
+- 022: Team collaboration (activity_feed, audit_log, workspace_invitations)
 
 ## Scraper Service Conventions (packages/scraper)
 
@@ -80,29 +135,3 @@ The scraper is a separate Python/FastAPI service that acts as an enrichment prov
 - Same JSON envelope format as backend: `{ success, data, error, meta }`
 - Same HMAC-SHA256 webhook signing pattern as backend
 - Pluggable extractor registry mirrors backend's provider adapter pattern
-
-### Enrichment Module Structure
-
-```
-src/modules/enrichment/
-├── adapters/
-│   ├── types.ts              # ProviderAdapter interface, ProviderResult, EnrichmentFieldType
-│   ├── apollo.adapter.ts     # Apollo API adapter
-│   ├── clearbit.adapter.ts   # Clearbit API adapter
-│   └── hunter.adapter.ts     # Hunter API adapter
-├── temporal/
-│   ├── client.ts             # Temporal client connection factory
-│   ├── activities.ts         # enrichRecord, updateJobStatus, deliverWebhook activities
-│   ├── workflows.ts          # enrichmentWorkflow — durable workflow definition
-│   └── worker.ts             # Temporal worker registration
-├── circuit-breaker.ts        # Sliding window circuit breaker (10 calls, 5 threshold, 60s cooldown)
-├── provider-registry.ts      # In-memory provider registry with Zod schemas
-├── job.repository.ts         # Enrichment job CRUD
-├── record.repository.ts      # Enrichment record CRUD with idempotency
-├── webhook.repository.ts     # Webhook subscription CRUD
-├── enrichment.service.ts     # Job lifecycle orchestration
-├── webhook.service.ts        # Webhook delivery with HMAC-SHA256 + retries
-├── enrichment.controller.ts  # HTTP handlers for all enrichment endpoints
-├── enrichment.routes.ts      # Route factories (provider, job, webhook, record)
-└── enrichment.schemas.ts     # Zod schemas for all enrichment endpoints
-```
