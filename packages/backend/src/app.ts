@@ -18,6 +18,7 @@ import { createDLQRoutes } from './modules/replication/dlq.routes';
 import { createAnalyticsRoutes } from './modules/analytics/analytics.routes';
 import { createSearchRoutes } from './modules/search/search.routes';
 import { createBillingRoutes } from './modules/billing/billing.routes';
+import { createIntegrationRoutes } from './modules/integration/integration.routes';
 
 export interface AppConfig {
   corsOrigin: string;
@@ -123,6 +124,15 @@ export function createApp(config: AppConfig): express.Express {
 
   // Admin DLQ routes (authenticated, admin only — admin check is inside DLQ router)
   app.use('/api/v1/admin/analytics', authenticate, createDLQRoutes());
+
+  // Integration routes
+  const { publicRoutes: integrationPublicRoutes, workspaceRoutes: integrationWorkspaceRoutes } = createIntegrationRoutes();
+
+  // Public integration routes: list available, OAuth callback
+  app.use('/api/v1/integrations', integrationPublicRoutes);
+
+  // Workspace-scoped integration routes (authenticated)
+  app.use('/api/v1/workspaces/:id/integrations', authenticate, integrationWorkspaceRoutes);
 
   // 404 catch-all for unknown routes
   app.use((_req, res) => {

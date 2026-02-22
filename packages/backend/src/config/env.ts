@@ -101,6 +101,27 @@ const envSchema = z.object({
   STRIPE_ENTERPRISE_PRICE_ID: z
     .string()
     .optional(),
+
+  // CRM Integrations (OAuth2)
+  SALESFORCE_CLIENT_ID: z
+    .string()
+    .optional(),
+
+  SALESFORCE_CLIENT_SECRET: z
+    .string()
+    .optional(),
+
+  HUBSPOT_CLIENT_ID: z
+    .string()
+    .optional(),
+
+  HUBSPOT_CLIENT_SECRET: z
+    .string()
+    .optional(),
+
+  INTEGRATION_OAUTH_REDIRECT_BASE: z
+    .string()
+    .default('http://localhost:3000/api/v1/integrations/callback'),
 });
 
 export type Env = z.infer<typeof envSchema>;
