@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\resilience\circuit_breaker.py
+# hypothesis_version: 6.151.9
+
+[120, 'closed', 'half_open', 'open']

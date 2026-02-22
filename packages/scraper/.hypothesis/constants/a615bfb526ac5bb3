@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\config\__init__.py
+# hypothesis_version: 6.151.9
+
+['AllowedHours', 'DomainPolicy', 'ScraperSettings', 'load_domain_policies']

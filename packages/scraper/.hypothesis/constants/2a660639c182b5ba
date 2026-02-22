@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\services\job_service.py
+# hypothesis_version: 6.151.9
+
+[100, 'Cancelled job %s', 'completed', 'failed', 'result', 'target_type', 'target_url', 'task_id', 'total']

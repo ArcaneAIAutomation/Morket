@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\config\settings.py
+# hypothesis_version: 6.151.9
+
+[100, 120, 300, 500, 1000, 8001, 30000, 'INFO', 'SCRAPER_', 'env_prefix']

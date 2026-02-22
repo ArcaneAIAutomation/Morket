@@ -39,6 +39,47 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
     .default('development'),
+
+  // ClickHouse (OLAP)
+  CLICKHOUSE_URL: z
+    .string()
+    .default('http://localhost:8123'),
+
+  CLICKHOUSE_DATABASE: z
+    .string()
+    .default('morket'),
+
+  CLICKHOUSE_USER: z
+    .string()
+    .default('default'),
+
+  CLICKHOUSE_PASSWORD: z
+    .string()
+    .optional()
+    .default(''),
+
+  // OpenSearch
+  OPENSEARCH_NODE_URLS: z
+    .string()
+    .default('http://localhost:9200'),
+
+  OPENSEARCH_USERNAME: z
+    .string()
+    .optional(),
+
+  OPENSEARCH_PASSWORD: z
+    .string()
+    .optional(),
+
+  OPENSEARCH_REQUEST_TIMEOUT_MS: z
+    .string()
+    .default('10000')
+    .transform(Number)
+    .pipe(z.number().int().positive()),
+
+  OPENSEARCH_SSL_CERT_PATH: z
+    .string()
+    .optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

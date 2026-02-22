@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\config\domain_policies.py
+# hypothesis_version: 6.151.9
+
+[500, 2000, 'default', 'domains', 'utf-8']

@@ -7,11 +7,16 @@ import { generalRateLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 import { createAuthMiddleware } from './middleware/auth';
 import { successResponse, errorResponse } from './shared/envelope';
+import { healthCheck as clickHouseHealthCheck } from './clickhouse/client';
+import { healthCheck as openSearchHealthCheck } from './modules/search/opensearch/client';
 import { createAuthRoutes } from './modules/auth/auth.routes';
 import { createWorkspaceRoutes } from './modules/workspace/workspace.routes';
 import { createCredentialRoutes } from './modules/credential/credential.routes';
 import { createCreditRoutes } from './modules/credit/credit.routes';
 import { createEnrichmentRoutes } from './modules/enrichment/enrichment.routes';
+import { createDLQRoutes } from './modules/replication/dlq.routes';
+import { createAnalyticsRoutes } from './modules/analytics/analytics.routes';
+import { createSearchRoutes } from './modules/search/search.routes';
 
 export interface AppConfig {
   corsOrigin: string;
@@ -40,8 +45,22 @@ export function createApp(config: AppConfig): express.Express {
 
   // 7. routes
   // Health check (public)
-  app.get('/api/v1/health', (_req, res) => {
-    res.json(successResponse({ status: 'ok' }));
+  app.get('/api/v1/health', async (_req, res) => {
+    const chHealthy = await clickHouseHealthCheck();
+
+    let osStatus: string = 'unavailable';
+    try {
+      const osHealth = await openSearchHealthCheck();
+      osStatus = osHealth.status;
+    } catch {
+      // Non-blocking — report as unavailable
+    }
+
+    res.json(successResponse({
+      status: 'ok',
+      clickhouse: chHealthy ? 'ok' : 'unavailable',
+      opensearch: osStatus,
+    }));
   });
 
   // Auth routes (public — rate limiting handled within auth router at 5/min)
@@ -77,6 +96,21 @@ export function createApp(config: AppConfig): express.Express {
 
   // Enrichment record routes (authenticated, workspace-scoped)
   app.use('/api/v1/workspaces/:id/enrichment-records', authenticate, recordRoutes);
+
+  // Analytics routes (authenticated, workspace-scoped)
+  app.use('/api/v1/workspaces/:id/analytics', authenticate, createAnalyticsRoutes());
+
+  // Search routes
+  const { searchRoutes, adminSearchRoutes } = createSearchRoutes();
+
+  // Workspace-scoped search routes (authenticated)
+  app.use('/api/v1/workspaces/:id/search', authenticate, searchRoutes);
+
+  // Admin search routes (authenticated, admin check inside router)
+  app.use('/api/v1/admin/search', authenticate, adminSearchRoutes);
+
+  // Admin DLQ routes (authenticated, admin only — admin check is inside DLQ router)
+  app.use('/api/v1/admin/analytics', authenticate, createDLQRoutes());
 
   // 404 catch-all for unknown routes
   app.use((_req, res) => {

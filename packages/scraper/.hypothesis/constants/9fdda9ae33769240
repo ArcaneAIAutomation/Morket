@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\routers\health.py
+# hypothesis_version: 6.151.9
+
+[503, '/health', '/metrics', '/readiness', 'Service not ready', 'available', 'browser_available', 'browser_pool', 'health', 'healthy', 'proxy_healthy', 'proxy_pool', 'ready', 'status', 'task_queue']

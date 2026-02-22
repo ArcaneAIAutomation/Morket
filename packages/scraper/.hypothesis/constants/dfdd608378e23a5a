@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\resilience\robots_checker.py
+# hypothesis_version: 6.151.9
+
+[10.0, 200, 3600, '*', 'content', 'fetched_at', 'parser']

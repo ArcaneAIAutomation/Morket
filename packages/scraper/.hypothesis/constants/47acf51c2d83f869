@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\middleware\__init__.py
+# hypothesis_version: 6.151.9
+
+['AuthenticationError', 'CircuitOpenError', 'JobNotFoundError', 'PoolExhaustedError', 'QueueFullError', 'RequestIdMiddleware', 'ScraperError', 'TaskNotFoundError', 'TaskTimeoutError', 'ValidationError']

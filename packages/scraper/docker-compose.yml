@@ -1,0 +1,34 @@
+version: "3.8"
+
+services:
+  scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - SCRAPER_SERVICE_KEY=${SCRAPER_SERVICE_KEY:-dev-service-key}
+      - SCRAPER_BACKEND_API_URL=${SCRAPER_BACKEND_API_URL:-http://host.docker.internal:3000/api/v1}
+      - SCRAPER_BACKEND_SERVICE_KEY=${SCRAPER_BACKEND_SERVICE_KEY:-dev-backend-key}
+      - SCRAPER_WEBHOOK_SECRET=${SCRAPER_WEBHOOK_SECRET:-dev-webhook-secret}
+      - SCRAPER_DEFAULT_WEBHOOK_URL=${SCRAPER_DEFAULT_WEBHOOK_URL:-}
+      - SCRAPER_BROWSER_POOL_SIZE=${SCRAPER_BROWSER_POOL_SIZE:-5}
+      - SCRAPER_BROWSER_POOL_MAX=${SCRAPER_BROWSER_POOL_MAX:-20}
+      - SCRAPER_BROWSER_PAGE_LIMIT=${SCRAPER_BROWSER_PAGE_LIMIT:-100}
+      - SCRAPER_MAX_QUEUE_DEPTH=${SCRAPER_MAX_QUEUE_DEPTH:-500}
+      - SCRAPER_TASK_TIMEOUT_SECONDS=${SCRAPER_TASK_TIMEOUT_SECONDS:-60}
+      - SCRAPER_LOG_LEVEL=${SCRAPER_LOG_LEVEL:-INFO}
+      - SCRAPER_PROXY_ENDPOINTS=${SCRAPER_PROXY_ENDPOINTS:-}
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

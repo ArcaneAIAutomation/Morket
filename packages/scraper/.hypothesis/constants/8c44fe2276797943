@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\middleware\error_handler.py
+# hypothesis_version: 6.151.9
+
+[401, 404, 422, 500, 502, 503, 504, ' -> ', 'Job not found', 'Task not found', 'Task queue is full', 'Validation error', 'data', 'error', 'field', 'fields', 'loc', 'message', 'meta', 'msg', 'success', 'type']

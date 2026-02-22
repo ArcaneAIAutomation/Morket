@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\models\normalizer.py
+# hypothesis_version: 6.151.9
+
+[',', '//', '<[^>]+>', '\\s+', 'city', 'country', 'fbclid', 'gclid', 'headquarters', 'http://', 'https', 'https:', 'https://', 'location', 'posting_url', 'profile_url', 'raw', 'state_region', 'utm_', 'utm_campaign', 'utm_content', 'utm_medium', 'utm_source', 'utm_term', 'website_url']

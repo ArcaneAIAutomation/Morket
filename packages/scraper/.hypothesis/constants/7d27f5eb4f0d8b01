@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\middleware\auth.py
+# hypothesis_version: 6.151.9
+
+['/health', '/metrics', '/readiness', 'x-service-key']

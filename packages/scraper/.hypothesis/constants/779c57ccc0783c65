@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\integration\webhook.py
+# hypothesis_version: 6.151.9
+
+[2.0, 10.0, 100, 400, ',', ':', 'Content-Type', 'X-Webhook-Signature', 'application/json', 'job_id', 'results', 'status', 'summary', 'utf-8']

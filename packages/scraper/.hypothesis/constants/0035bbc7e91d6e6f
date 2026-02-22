@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\services\task_queue.py
+# hypothesis_version: 6.151.9
+
+[0.0, 30.0, 60.0, 500, 1000, 'Cancelled', 'Task queue drained', 'Worker %d started', 'Worker %d stopped', 'active_workers', 'avg_duration_ms', 'completed_count', 'created_ts', 'priority', 'queue_depth', 'task']

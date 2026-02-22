@@ -1,7 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import { createApp } from './app';
 import { _resetRateLimiterState } from './middleware/rateLimiter';
+
+// Mock the ClickHouse health check so it doesn't need a real connection
+vi.mock('./clickhouse/client', () => ({
+  healthCheck: vi.fn().mockResolvedValue(false),
+}));
 
 describe('createApp', () => {
   beforeEach(() => {
@@ -22,7 +27,7 @@ describe('createApp', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       success: true,
-      data: { status: 'ok' },
+      data: { status: 'ok', clickhouse: 'unavailable' },
       error: null,
     });
   });

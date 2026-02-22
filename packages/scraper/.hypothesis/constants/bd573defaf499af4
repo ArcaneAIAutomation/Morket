@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\logging_config.py
+# hypothesis_version: 6.151.9
+
+['INFO', '[REDACTED]', 'duration_ms', 'error_reason', 'exception', 'fields_extracted', 'level', 'logger', 'message', 'proxy_used', 'request_id', 'result_completeness', 'retry_attempts', 'target_domain', 'target_url', 'timestamp']

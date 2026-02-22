@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\routers\scrape.py
+# hypothesis_version: 6.151.9
+
+['/api/v1/scrape', '/sync', '/{task_id}', 'created_at', 'error', 'result', 'scrape', 'status', 'target_type', 'target_url', 'task_id']

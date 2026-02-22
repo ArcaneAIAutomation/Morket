@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\browser\pool.py
+# hypothesis_version: 6.151.9
+
+[0.1, 10.0, 100, '--disable-gpu', '--no-sandbox', 'Page', 'ProxyEndpoint | None', 'available', 'disconnected', 'in_use', 'pages_processed', 'proxy', 'recycled_count', 'server', 'total']

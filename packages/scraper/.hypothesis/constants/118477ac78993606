@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\proxy\manager.py
+# hypothesis_version: 6.151.9
+
+[10.0, 500, 'failure_count', 'healthy', 'http', 'is_healthy', 'protocol', 'proxies', 'success_count', 'total', 'unhealthy', 'url']

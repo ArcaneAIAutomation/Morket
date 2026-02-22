@@ -1,0 +1,24 @@
+domains:
+  linkedin.com:
+    tokens_per_interval: 1
+    interval_seconds: 15
+    min_delay_ms: 2000
+    max_delay_ms: 5000
+    allowed_hours:
+      start: 6    # UTC
+      end: 22
+    respect_robots_txt: true
+
+  indeed.com:
+    tokens_per_interval: 2
+    interval_seconds: 10
+    min_delay_ms: 1000
+    max_delay_ms: 3000
+    respect_robots_txt: true
+
+  default:
+    tokens_per_interval: 2
+    interval_seconds: 10
+    min_delay_ms: 500
+    max_delay_ms: 2000
+    respect_robots_txt: false

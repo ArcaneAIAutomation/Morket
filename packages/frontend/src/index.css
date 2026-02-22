@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* AG Grid theme overrides */
+.ag-theme-alpine {
+  --ag-header-background-color: #f8fafc;
+  --ag-row-hover-color: #f1f5f9;
+  --ag-selected-row-background-color: #e0f2fe;
+  --ag-font-family: inherit;
+}

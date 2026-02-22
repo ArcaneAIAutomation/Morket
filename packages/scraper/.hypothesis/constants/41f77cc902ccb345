@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\extractors\job_posting.py
+# hypothesis_version: 6.151.9
+
+[', ', '.company-name', '.compensation', '.description', '.employer-name', '.hiring-company', '.job-description', '.job-location', '.job-title', '.location', '.posting-headline h2', '.salary', '.salary-range', '@type', 'JobPosting', 'Page', 'address', 'addressCountry', 'addressLocality', 'addressRegion', 'baseSalary', 'body', 'company_name', 'content', 'currency', 'description', 'estimatedSalary', 'h1', 'h1.job-title', 'hiringOrganization', 'jobLocation', 'job_title', 'location', 'maxValue', 'meta', 'minValue', 'name', 'posting_url', 'salary_range', 'title', 'value']

@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\resilience\rate_limiter.py
+# hypothesis_version: 6.151.9
+
+[0.0, 0.5, 1.0, 300, 'current_tokens', 'interval_seconds', 'is_reduced', 'max_tokens', 'refill_rate', 'tokens_per_interval']

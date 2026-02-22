@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\integration\credential_client.py
+# hypothesis_version: 6.151.9
+
+[10.0, 300, 404, '/', 'X-Service-Key', 'data']
