@@ -80,9 +80,9 @@ The backend follows a layered architecture: **Routes → Controllers → Service
 | Frontend (planned) | React 18+, Zustand, AG Grid, Tailwind CSS |
 | Infrastructure | Docker, Terraform, GitHub Actions, AWS |
 
-## Current Status: Module 7 — Infrastructure & Deployment ✅
+## Current Status: Module 8 — Product Enhancements & Growth Features ✅
 
-All 7 modules are complete. Application code (Modules 1–6) covers the full backend API, enrichment orchestration, scraping microservices, spreadsheet UI, OLAP analytics, and search layer. Module 7 provides Docker containerization, Terraform IaC for AWS, and GitHub Actions CI/CD pipelines.
+All 8 modules are complete. Application code (Modules 1–6) covers the full backend API, enrichment orchestration, scraping microservices, spreadsheet UI, OLAP analytics, and search layer. Module 7 provides Docker containerization, Terraform IaC for AWS, and GitHub Actions CI/CD. Module 8 adds Stripe billing, CRM integrations, advanced data operations, workflow builder, AI/ML intelligence, team collaboration, Redis caching, and observability.
 
 ### What's built
 
@@ -154,6 +154,72 @@ DELETE /api/v1/workspaces/:id/webhooks/:webhookId   # admin+
 
 # Health
 GET    /api/v1/health
+GET    /api/v1/readiness
+GET    /api/v1/metrics
+
+# Billing (Stripe)
+GET    /api/v1/billing/plans                                    # public plan listing
+POST   /api/v1/billing/webhooks                                 # Stripe webhook (raw body)
+POST   /api/v1/workspaces/:id/billing/checkout                  # create Stripe Checkout session
+POST   /api/v1/workspaces/:id/billing/portal                    # create Stripe Customer Portal
+POST   /api/v1/workspaces/:id/billing/credits/purchase           # purchase credit pack
+GET    /api/v1/workspaces/:id/billing/invoices                   # list invoices
+
+# CRM Integrations
+GET    /api/v1/integrations                                      # list available integrations
+GET    /api/v1/integrations/callback                             # OAuth callback
+POST   /api/v1/workspaces/:id/integrations/:provider/connect     # start OAuth flow
+POST   /api/v1/workspaces/:id/integrations/:provider/disconnect  # disconnect
+GET    /api/v1/workspaces/:id/integrations/:provider/field-mappings
+PUT    /api/v1/workspaces/:id/integrations/:provider/field-mappings
+POST   /api/v1/workspaces/:id/integrations/:provider/push        # push records to CRM
+POST   /api/v1/workspaces/:id/integrations/:provider/pull        # pull records from CRM
+GET    /api/v1/workspaces/:id/integrations/:provider/sync-history
+
+# Data Operations
+POST   /api/v1/workspaces/:id/data-ops/import/preview            # CSV preview
+POST   /api/v1/workspaces/:id/data-ops/import/commit             # commit import
+POST   /api/v1/workspaces/:id/data-ops/export                    # export CSV/JSON
+POST   /api/v1/workspaces/:id/data-ops/dedup/scan                # find duplicates
+POST   /api/v1/workspaces/:id/data-ops/dedup/merge               # merge duplicates
+GET    /api/v1/workspaces/:id/data-ops/hygiene                   # data hygiene stats
+POST   /api/v1/workspaces/:id/data-ops/bulk-delete               # bulk delete records
+GET    /api/v1/workspaces/:id/data-ops/views                     # saved views CRUD
+POST   /api/v1/workspaces/:id/data-ops/views
+PUT    /api/v1/workspaces/:id/data-ops/views/:viewId
+DELETE /api/v1/workspaces/:id/data-ops/views/:viewId
+GET    /api/v1/workspaces/:id/data-ops/activity                  # record activity log
+
+# Workflow Builder
+POST   /api/v1/workspaces/:id/workflows                          # create workflow
+GET    /api/v1/workspaces/:id/workflows                          # list workflows
+GET    /api/v1/workspaces/:id/workflows/:workflowId              # get workflow
+PUT    /api/v1/workspaces/:id/workflows/:workflowId              # update workflow
+DELETE /api/v1/workspaces/:id/workflows/:workflowId              # delete workflow
+GET    /api/v1/workspaces/:id/workflows/:workflowId/versions     # list versions
+POST   /api/v1/workspaces/:id/workflows/:workflowId/rollback     # rollback to version
+POST   /api/v1/workspaces/:id/workflows/:workflowId/execute      # execute workflow
+GET    /api/v1/workspaces/:id/workflows/:workflowId/runs         # list runs
+GET    /api/v1/workspaces/:id/workflows/templates                 # list templates
+POST   /api/v1/workspaces/:id/workflows/templates/:templateId/clone
+PUT    /api/v1/workspaces/:id/workflows/:workflowId/schedule     # set cron schedule
+
+# AI/ML Intelligence
+POST   /api/v1/workspaces/:id/ai/quality-score                   # score records
+POST   /api/v1/workspaces/:id/ai/field-map                       # auto field mapping
+POST   /api/v1/workspaces/:id/ai/dedup-detect                    # fuzzy duplicate detection
+POST   /api/v1/workspaces/:id/ai/query                           # natural language query
+
+# Team & Collaboration
+GET    /api/v1/workspaces/:id/team/activity                      # activity feed
+POST   /api/v1/workspaces/:id/team/activity                      # log activity
+GET    /api/v1/workspaces/:id/team/audit-log                     # audit log
+GET    /api/v1/workspaces/:id/team/audit-log/export              # export audit CSV
+POST   /api/v1/workspaces/:id/team/invitations                   # invite by email
+GET    /api/v1/workspaces/:id/team/invitations                   # list invitations
+DELETE /api/v1/workspaces/:id/team/invitations/:invitationId     # revoke invitation
+POST   /api/v1/invitations/:token/accept                         # accept (public)
+POST   /api/v1/invitations/:token/decline                        # decline (public)
 ```
 
 ### Scraper Service Endpoints (packages/scraper — Module 3)
@@ -247,19 +313,21 @@ packages/
 │   │   │   ├── workspace/             # Workspace CRUD, membership management
 │   │   │   ├── credential/            # Encrypted API credential storage
 │   │   │   ├── credit/                # Billing, credits, transaction ledger
-│   │   │   └── enrichment/            # Enrichment orchestration (Module 2)
-│   │   │       ├── adapters/          # Provider adapters (Apollo, Clearbit, Hunter)
-│   │   │       ├── temporal/          # Temporal.io client, activities, workflows, worker
-│   │   │       ├── circuit-breaker.ts # Sliding window circuit breaker
-│   │   │       ├── provider-registry.ts # In-memory provider registry
-│   │   │       ├── job.repository.ts  # Enrichment job persistence
-│   │   │       ├── record.repository.ts # Enrichment record persistence
-│   │   │       ├── webhook.repository.ts # Webhook subscription persistence
-│   │   │       ├── enrichment.service.ts # Job lifecycle orchestration
-│   │   │       ├── webhook.service.ts # Webhook delivery with HMAC + retries
-│   │   │       ├── enrichment.controller.ts # HTTP handlers
-│   │   │       ├── enrichment.routes.ts # Route factories
-│   │   │       └── enrichment.schemas.ts # Zod validation schemas
+│   │   │   ├── enrichment/            # Enrichment orchestration (Module 2)
+│   │   │   │   ├── adapters/          # Provider adapters (Apollo, Clearbit, Hunter)
+│   │   │   │   ├── temporal/          # Temporal.io client, activities, workflows, worker
+│   │   │   │   ├── circuit-breaker.ts # Sliding window circuit breaker
+│   │   │   │   ├── provider-registry.ts # In-memory provider registry
+│   │   │   │   └── ...               # job/record/webhook repos, service, controller, routes, schemas
+│   │   │   ├── billing/               # Stripe subscriptions, credit purchases, webhooks
+│   │   │   ├── integration/           # CRM integrations (Salesforce, HubSpot) with OAuth2
+│   │   │   ├── data-ops/             # CSV import/export, dedup, hygiene, saved views
+│   │   │   ├── workflow/             # Visual workflow builder backend (CRUD, versioning, execution)
+│   │   │   ├── ai/                   # AI/ML: quality scoring, field mapping, dedup detection, NL query
+│   │   │   ├── team/                 # Activity feed, audit log, workspace invitations
+│   │   │   ├── analytics/            # ClickHouse analytics queries + CSV export
+│   │   │   ├── search/               # OpenSearch full-text search + admin reindex
+│   │   │   └── replication/          # CDC pipeline + dead letter queue
 │   │   ├── shared/                    # DB pool, encryption, errors, envelope, logger, types
 │   │   ├── app.ts                     # Express app assembly
 │   │   └── server.ts                  # Entry point
@@ -402,6 +470,22 @@ Production-grade infrastructure on AWS with CI/CD automation.
 - GitHub Actions Deploy pipeline: ECR push, ECS rolling deploy, S3 + CloudFront for frontend, migration runner, production approval gate
 - CloudWatch alarms, dashboard, SNS notifications
 - docker-compose.yml for full local dev stack
+
+### ✅ Module 8: Product Enhancements & Growth Features
+> *Status: Complete*
+
+Eight sub-modules covering billing, integrations, data operations, workflow builder, AI/ML, team collaboration, performance, and observability.
+
+- **8.1 AI/ML Intelligence** — Data quality scoring (confidence %, freshness), smart field mapping with alias dictionary, fuzzy duplicate detection (Levenshtein), natural language query parser
+- **8.2 Visual Workflow Builder** — Workflow CRUD with automatic versioning, graph definition (data_source/enrichment_step/filter/output nodes), version rollback, async execution with run tracking, template cloning, cron scheduling
+- **8.3 CRM Integrations** — Salesforce & HubSpot OAuth2 flows, bi-directional field mapping, push/pull records, sync history, encrypted token storage per workspace
+- **8.4 Stripe Billing** — Subscription management (free/starter/pro/enterprise), credit pack purchases, Stripe Checkout + Customer Portal, webhook handling, invoice listing
+- **8.5 Advanced Data Operations** — CSV import (two-phase preview/commit), export (CSV/JSON), dedup scan + merge, data hygiene stats, bulk delete, saved views CRUD, record activity log
+- **8.6 Team & Collaboration** — Extended roles (viewer, billing_admin), activity feed, immutable audit log with CSV export, workspace invitations with 7-day expiry tokens
+- **8.7 Performance & Scale** — Redis caching layer (ioredis) with graceful degradation, domain-specific cache helpers (workspace config 5min, user session 15min, provider health 1min), Redis health check
+- **8.8 Observability & Operations** — Structured JSON logger with configurable levels, in-memory request/error metrics, GET /api/v1/metrics and GET /api/v1/readiness endpoints
+
+---
 
 ## License
 
