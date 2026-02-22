@@ -127,6 +127,15 @@ const envSchema = z.object({
   REDIS_URL: z
     .string()
     .optional(),
+
+  // OpenTelemetry
+  OTEL_ENABLED: z
+    .string()
+    .default('true'),
+
+  OTEL_EXPORTER_OTLP_ENDPOINT: z
+    .string()
+    .default('http://localhost:4318/v1/traces'),
 });
 
 export type Env = z.infer<typeof envSchema>;

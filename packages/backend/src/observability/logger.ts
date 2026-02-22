@@ -1,3 +1,5 @@
+import { trace, context } from '@opentelemetry/api';
+
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const LOG_LEVELS: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3 };
@@ -9,11 +11,22 @@ interface LogEntry {
   level: LogLevel;
   message: string;
   service: string;
+  trace_id?: string;
+  span_id?: string;
   [key: string]: unknown;
 }
 
 function shouldLog(level: LogLevel): boolean {
   return LOG_LEVELS[level] >= LOG_LEVELS[minLevel];
+}
+
+function getTraceContext(): { trace_id?: string; span_id?: string } {
+  const span = trace.getSpan(context.active());
+  if (!span) return {};
+  const ctx = span.spanContext();
+  // Only include if trace is valid (not all-zeros)
+  if (ctx.traceId === '00000000000000000000000000000000') return {};
+  return { trace_id: ctx.traceId, span_id: ctx.spanId };
 }
 
 function formatEntry(level: LogLevel, message: string, meta?: Record<string, unknown>): string {
@@ -22,6 +35,7 @@ function formatEntry(level: LogLevel, message: string, meta?: Record<string, unk
     level,
     message,
     service: 'morket-backend',
+    ...getTraceContext(),
     ...meta,
   };
   return JSON.stringify(entry);

@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import { requestIdMiddleware } from './middleware/requestId';
 import { requestLoggerMiddleware } from './middleware/requestLogger';
+import { tracingMiddleware } from './middleware/tracing';
 import { generalRateLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 import { createAuthMiddleware } from './middleware/auth';
@@ -40,7 +41,9 @@ export function createApp(config: AppConfig): express.Express {
   // Middleware pipeline (order matters)
   // 1. requestId
   app.use(requestIdMiddleware);
-  // 2. requestLogger
+  // 2. tracing (metrics recording)
+  app.use(tracingMiddleware);
+  // 3. requestLogger
   app.use(requestLoggerMiddleware);
   // 3. helmet
   app.use(helmet());

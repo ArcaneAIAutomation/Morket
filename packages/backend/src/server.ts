@@ -1,3 +1,7 @@
+// OpenTelemetry must be initialized before any other imports to patch libraries
+import { initTracing, shutdownTracing } from './observability/tracing';
+initTracing();
+
 import { env } from './config/env';
 import { initPool, closePool } from './shared/db';
 import { logger } from './shared/logger';
@@ -113,6 +117,9 @@ async function shutdown(signal: string): Promise<void> {
 
   // Close PG pool
   await closePool();
+
+  // Flush pending traces
+  await shutdownTracing();
 
   logger.info('Shutdown complete');
   process.exit(0);
