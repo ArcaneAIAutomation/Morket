@@ -80,9 +80,9 @@ The backend follows a layered architecture: **Routes → Controllers → Service
 | Frontend (planned) | React 18+, Zustand, AG Grid, Tailwind CSS |
 | Infrastructure | Docker, Terraform, GitHub Actions, AWS |
 
-## Current Status: Module 3 — Scraping Microservices 🔄
+## Current Status: Module 7 — Infrastructure & Deployment ✅
 
-Modules 1 and 2 are fully implemented with 400 tests passing across 43 test files. Module 3 (Scraping Microservices) is in the requirements phase.
+All 7 modules are complete. Application code (Modules 1–6) covers the full backend API, enrichment orchestration, scraping microservices, spreadsheet UI, OLAP analytics, and search layer. Module 7 provides Docker containerization, Terraform IaC for AWS, and GitHub Actions CI/CD pipelines.
 
 ### What's built
 
@@ -324,8 +324,8 @@ Temporal.io workflow engine for orchestrating multi-step data enrichment pipelin
 
 ---
 
-### 🔄 Module 3: Scraping Microservices
-> *Status: In Progress (Requirements Phase)*
+### ✅ Module 3: Scraping Microservices
+> *Status: Complete*
 
 Python/FastAPI/Playwright scraping service for data sources without APIs. Runs as a standalone microservice communicating with the backend via REST API. Acts as an enrichment provider callable by Temporal.io workflows.
 
@@ -347,8 +347,8 @@ Python/FastAPI/Playwright scraping service for data sources without APIs. Runs a
 
 ---
 
-### 🔲 Module 4: Spreadsheet UI
-> *Status: Planned*
+### ✅ Module 4: Spreadsheet UI
+> *Status: Complete*
 
 React-based spreadsheet interface using AG Grid for high-performance data manipulation. The primary user interface for viewing, editing, and enriching prospect data.
 
@@ -362,8 +362,8 @@ React-based spreadsheet interface using AG Grid for high-performance data manipu
 
 ---
 
-### 🔲 Module 5: OLAP Analytics Layer
-> *Status: Planned*
+### ✅ Module 5: OLAP Analytics Layer
+> *Status: Complete*
 
 ClickHouse integration for analytical queries across enrichment data. Separates read-heavy analytics from the OLTP PostgreSQL database.
 
@@ -376,8 +376,8 @@ ClickHouse integration for analytical queries across enrichment data. Separates 
 
 ---
 
-### 🔲 Module 6: Search
-> *Status: Planned*
+### ✅ Module 6: Search
+> *Status: Complete*
 
 OpenSearch/ElasticSearch integration for full-text search across enriched prospect data.
 
@@ -390,17 +390,18 @@ OpenSearch/ElasticSearch integration for full-text search across enriched prospe
 
 ---
 
-### 🔲 Module 7: Infrastructure & DevOps
-> *Status: Planned*
+### ✅ Module 7: Infrastructure & DevOps
+> *Status: Complete*
 
 Production-grade infrastructure on AWS with CI/CD automation.
 
-- Docker multi-stage builds for all services
-- Terraform IaC for AWS (ECS Fargate, Aurora, S3, ElastiCache)
-- GitHub Actions CI/CD pipeline (lint → test → build → deploy)
-- Redis caching layer for workspace configs and session data
-- CloudWatch logging and alerting
-- Blue/green deployment strategy
+- Docker multi-stage builds for all services (backend, scraper, frontend)
+- Terraform IaC for AWS: 13 reusable modules (VPC, ECS, ALB, Aurora, ClickHouse, Redis, RabbitMQ, OpenSearch, S3, CloudFront, ECR, Secrets, Monitoring)
+- Environment configs for staging (reduced) and production (full-scale, multi-AZ, auto-scaling)
+- GitHub Actions CI pipeline: path-filtered jobs for backend, scraper, frontend, terraform
+- GitHub Actions Deploy pipeline: ECR push, ECS rolling deploy, S3 + CloudFront for frontend, migration runner, production approval gate
+- CloudWatch alarms, dashboard, SNS notifications
+- docker-compose.yml for full local dev stack
 
 ## License
 

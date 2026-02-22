@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      scraper: ${{ steps.filter.outputs.scraper }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      terraform: ${{ steps.filter.outputs.terraform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'packages/backend/**'
+            scraper:
+              - 'packages/scraper/**'
+            frontend:
+              - 'packages/frontend/**'
+            terraform:
+              - 'terraform/**'
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: packages/backend/package-lock.json
+      - run: npm ci
+      - run: npx eslint . --max-warnings 0
+      - run: npx tsc --noEmit
+      - run: npx vitest run
+
+  scraper:
+    needs: changes
+    if: needs.changes.outputs.scraper == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/scraper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: ruff check .
+      - run: black --check .
+      - run: mypy .
+      - run: pytest --tb=short -q
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: packages/frontend/package-lock.json
+      - run: npm ci
+      - run: npx eslint . --max-warnings 0
+      - run: npx tsc --noEmit
+      - run: npx vitest run
+
+  terraform:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.7"
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive terraform/
+      - name: Validate staging
+        working-directory: terraform/environments/staging
+        run: |
+          terraform init -backend=false
+          terraform validate
+      - name: Validate production
+        working-directory: terraform/environments/production
+        run: |
+          terraform init -backend=false
+          terraform validate

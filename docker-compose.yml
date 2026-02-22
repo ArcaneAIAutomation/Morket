@@ -1,0 +1,183 @@
+version: "3.9"
+
+services:
+  # --- Application Services ---
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: "3000"
+      DATABASE_URL: postgresql://morket:morket_dev@postgres:5432/morket
+      CLICKHOUSE_URL: http://clickhouse:8123
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://morket:morket_dev@rabbitmq:5672
+      OPENSEARCH_NODE_URLS: http://opensearch:9200
+      TEMPORAL_ADDRESS: temporal:7233
+      JWT_SECRET: dev-jwt-secret-minimum-32-characters-long-here
+      ENCRYPTION_MASTER_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      SERVICE_API_KEY: dev-service-api-key
+      WEBHOOK_HMAC_SECRET: dev-webhook-hmac-secret
+      LOG_LEVEL: debug
+      CORS_ORIGIN: http://localhost:5173
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - morket
+    restart: unless-stopped
+
+  scraper:
+    build:
+      context: .
+      dockerfile: docker/scraper.Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      BACKEND_API_URL: http://backend:3000
+      SERVICE_API_KEY: dev-service-api-key
+      BROWSER_POOL_SIZE: "3"
+      LOG_LEVEL: debug
+      PORT: "8001"
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - morket
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - morket
+    restart: unless-stopped
+
+  # --- Infrastructure Services ---
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: morket
+      POSTGRES_PASSWORD: morket_dev
+      POSTGRES_DB: morket
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U morket"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - morket
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - morket
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - morket
+
+  rabbitmq:
+    image: rabbitmq:3.11-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: morket
+      RABBITMQ_DEFAULT_PASS: morket_dev
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    networks:
+      - morket
+
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    ports:
+      - "9200:9200"
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    networks:
+      - morket
+
+  temporal:
+    image: temporalio/auto-setup:1.22
+    ports:
+      - "7233:7233"
+    environment:
+      DB: postgresql
+      DB_PORT: "5432"
+      POSTGRES_USER: morket
+      POSTGRES_PWD: morket_dev
+      POSTGRES_SEEDS: postgres
+      DYNAMIC_CONFIG_FILE_PATH: ""
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - morket
+
+volumes:
+  postgres_data:
+  clickhouse_data:
+  redis_data:
+  rabbitmq_data:
+  opensearch_data:
+
+networks:
+  morket:
+    driver: bridge

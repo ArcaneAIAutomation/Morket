@@ -1,0 +1,205 @@
+name: Deploy
+
+on:
+  push:
+    branches: [develop, main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: meta
+        run: echo "tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/backend.Dockerfile
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/morket-backend:${{ steps.meta.outputs.tag }}
+            ${{ steps.ecr.outputs.registry }}/morket-backend:latest
+
+      - name: Build and push scraper
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/scraper.Dockerfile
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/morket-scraper:${{ steps.meta.outputs.tag }}
+            ${{ steps.ecr.outputs.registry }}/morket-scraper:latest
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/frontend.Dockerfile
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/morket-frontend:${{ steps.meta.outputs.tag }}
+            ${{ steps.ecr.outputs.registry }}/morket-frontend:latest
+
+  deploy-staging:
+    needs: build-and-push
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Run database migrations
+        run: |
+          aws ecs run-task \
+            --cluster morket-staging \
+            --task-definition morket-staging-backend \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=${{ secrets.PRIVATE_SUBNET_IDS }},securityGroups=[${{ secrets.ECS_SECURITY_GROUP_ID }}],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"backend","command":["node","dist/migrations/runner.js"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text | xargs -I {} aws ecs wait tasks-stopped --cluster morket-staging --tasks {}
+
+      - name: Update backend service
+        run: |
+          aws ecs update-service \
+            --cluster morket-staging \
+            --service morket-staging-backend \
+            --force-new-deployment \
+            --query 'service.serviceName'
+          aws ecs wait services-stable \
+            --cluster morket-staging \
+            --services morket-staging-backend
+
+      - name: Update scraper service
+        run: |
+          aws ecs update-service \
+            --cluster morket-staging \
+            --service morket-staging-scraper \
+            --force-new-deployment \
+            --query 'service.serviceName'
+          aws ecs wait services-stable \
+            --cluster morket-staging \
+            --services morket-staging-scraper
+
+      - name: Update temporal worker service
+        run: |
+          aws ecs update-service \
+            --cluster morket-staging \
+            --service morket-staging-temporal-worker \
+            --force-new-deployment \
+            --query 'service.serviceName'
+
+      - name: Deploy frontend to S3
+        run: |
+          CONTAINER_ID=$(docker create ${{ steps.ecr.outputs.registry }}/morket-frontend:${{ needs.build-and-push.outputs.image_tag }})
+          docker cp $CONTAINER_ID:/usr/share/nginx/html ./frontend-dist
+          docker rm $CONTAINER_ID
+          aws s3 sync ./frontend-dist s3://morket-staging-frontend-assets --delete
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
+
+  deploy-production:
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Run database migrations
+        run: |
+          TASK_ARN=$(aws ecs run-task \
+            --cluster morket-production \
+            --task-definition morket-production-backend \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=${{ secrets.PRIVATE_SUBNET_IDS }},securityGroups=[${{ secrets.ECS_SECURITY_GROUP_ID }}],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"backend","command":["node","dist/migrations/runner.js"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+          aws ecs wait tasks-stopped --cluster morket-production --tasks $TASK_ARN
+          EXIT_CODE=$(aws ecs describe-tasks --cluster morket-production --tasks $TASK_ARN --query 'tasks[0].containers[0].exitCode' --output text)
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+
+      - name: Update backend service
+        run: |
+          aws ecs update-service \
+            --cluster morket-production \
+            --service morket-production-backend \
+            --force-new-deployment
+          aws ecs wait services-stable \
+            --cluster morket-production \
+            --services morket-production-backend
+
+      - name: Update scraper service
+        run: |
+          aws ecs update-service \
+            --cluster morket-production \
+            --service morket-production-scraper \
+            --force-new-deployment
+          aws ecs wait services-stable \
+            --cluster morket-production \
+            --services morket-production-scraper
+
+      - name: Update temporal worker service
+        run: |
+          aws ecs update-service \
+            --cluster morket-production \
+            --service morket-production-temporal-worker \
+            --force-new-deployment
+
+      - name: Deploy frontend to S3
+        run: |
+          CONTAINER_ID=$(docker create ${{ steps.ecr.outputs.registry }}/morket-frontend:${{ needs.build-and-push.outputs.image_tag }})
+          docker cp $CONTAINER_ID:/usr/share/nginx/html ./frontend-dist
+          docker rm $CONTAINER_ID
+          aws s3 sync ./frontend-dist s3://morket-production-frontend-assets --delete
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
