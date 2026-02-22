@@ -80,6 +80,27 @@ const envSchema = z.object({
   OPENSEARCH_SSL_CERT_PATH: z
     .string()
     .optional(),
+
+  // Stripe Billing
+  STRIPE_SECRET_KEY: z
+    .string()
+    .optional(),
+
+  STRIPE_WEBHOOK_SECRET: z
+    .string()
+    .optional(),
+
+  STRIPE_STARTER_PRICE_ID: z
+    .string()
+    .optional(),
+
+  STRIPE_PRO_PRICE_ID: z
+    .string()
+    .optional(),
+
+  STRIPE_ENTERPRISE_PRICE_ID: z
+    .string()
+    .optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

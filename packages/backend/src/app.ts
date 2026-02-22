@@ -17,6 +17,7 @@ import { createEnrichmentRoutes } from './modules/enrichment/enrichment.routes';
 import { createDLQRoutes } from './modules/replication/dlq.routes';
 import { createAnalyticsRoutes } from './modules/analytics/analytics.routes';
 import { createSearchRoutes } from './modules/search/search.routes';
+import { createBillingRoutes } from './modules/billing/billing.routes';
 
 export interface AppConfig {
   corsOrigin: string;
@@ -40,6 +41,11 @@ export function createApp(config: AppConfig): express.Express {
   app.use(cors({ origin: config.corsOrigin }));
   // 5. rateLimiter (general 100/min)
   app.use(generalRateLimiter);
+
+  // 5.5 Stripe webhook route (must receive raw body before JSON parser)
+  const { planRoutes, workspaceBillingRoutes, webhookRoutes } = createBillingRoutes();
+  app.use('/api/v1/billing', webhookRoutes);
+
   // 6. json body parser
   app.use(express.json());
 
@@ -81,6 +87,12 @@ export function createApp(config: AppConfig): express.Express {
 
   // Nested billing/credit routes: /api/v1/workspaces/:id/billing
   app.use('/api/v1/workspaces/:id/billing', authenticate, createCreditRoutes());
+
+  // Stripe billing routes: checkout, portal, credit purchase, invoices (authenticated, workspace-scoped)
+  app.use('/api/v1/workspaces/:id/billing', authenticate, workspaceBillingRoutes);
+
+  // Public billing routes: plan listing
+  app.use('/api/v1/billing', planRoutes);
 
   // Enrichment routes
   const { providerRoutes, jobRoutes, webhookRoutes, recordRoutes } = createEnrichmentRoutes();
