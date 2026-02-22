@@ -39,6 +39,7 @@ terraform/     # AWS IaC (Module 7 — COMPLETE)
 - **Billing**: Stripe integration for subscriptions, credit purchases, webhooks
 - **CRM Integrations**: Salesforce & HubSpot via OAuth2 with encrypted token storage
 - **Observability**: Structured JSON logger, in-memory metrics, /readiness and /metrics endpoints
+- **Distributed Tracing**: OpenTelemetry SDK with auto-instrumentation for HTTP, Express, PostgreSQL, Redis; OTLP exporter; log-trace correlation via trace_id/span_id
 - **Migrations**: 22 sequential numbered files under `packages/backend/migrations/`
 
 ## Frontend (packages/frontend) — COMPLETE
@@ -47,13 +48,13 @@ terraform/     # AWS IaC (Module 7 — COMPLETE)
 - **State Management**: Zustand 5 (one store per domain: auth, grid, workspace, job, analytics, search, ui)
 - **Grid/Spreadsheet**: AG Grid v32 (ag-grid-react) with DOM virtualization for 100k+ rows
 - **Charts**: Recharts 3 for analytics dashboards
-- **Routing**: React Router DOM v6 with lazy-loaded routes and AuthGuard
+- **Routing**: React Router DOM v6 with lazy-loaded routes and AuthGuard — all routes wired (spreadsheet, jobs, analytics, search, settings with nested tabs)
 - **HTTP Client**: Axios with dual instances (30s standard, 120s enrichment), auto token refresh, envelope unwrapping
 - **Validation**: Zod for client-side form schemas
 - **Styling**: Tailwind CSS 3 with AG Grid theme overrides
 - **Testing**: Vitest + Testing Library + MSW (API mocking) + fast-check (7 property test suites)
 - **Web Workers**: CSV parse/generate off main thread for datasets ≥10k rows
-- **Features**: Spreadsheet with undo (50-deep), auto-save (30s), context menus, column management, CSV import/export, enrichment job polling (5s), analytics dashboard (enrichment/scraping/credits tabs), full-text search with facets and typeahead, role-based UI permissions, offline detection
+- **Features**: Spreadsheet with undo (50-deep), auto-save (30s), context menus, column management, CSV import/export, enrichment job polling (5s), enrichment panel slide-over with "Enrich Selected" toolbar button, analytics dashboard (enrichment/scraping/credits tabs), full-text search with facets and typeahead, role-based UI permissions, offline detection, settings pages (workspace/billing/credentials/members)
 
 ## Scraping Microservices (packages/scraper) — COMPLETE
 - **Language**: Python 3.11+

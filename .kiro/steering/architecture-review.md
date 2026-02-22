@@ -53,6 +53,9 @@ When reviewing code or making architectural decisions, evaluate against these cr
 - AG Grid with DOM virtualization for 100k+ row datasets
 - Frontend filter changes debounced at 300ms; search suggestions debounced at 200ms
 - Lazy-load heavy routes (AnalyticsDashboard, SearchResultsView) via React.lazy + Suspense
+- All routes fully wired: spreadsheet (default), jobs, analytics, search, settings (workspace/members/credentials/billing tabs)
+- EnrichmentPanel slide-over integrated into SpreadsheetView with "Enrich Selected" toolbar button
+- useAutoSave hook wired into SpreadsheetView for 30s auto-save
 - Scraper browser pool: configurable size (default 5, max 20), instances recycled after 100 pages
 - Scraper task queue: asyncio-based with max queue depth (500), priority scheduling (smaller jobs first)
 - Per-domain rate limiting via token bucket algorithm (default 2 req/10s per domain)
@@ -97,7 +100,7 @@ When reviewing code or making architectural decisions, evaluate against these cr
 
 ### Core Patterns
 - Error handling: Custom `AppError` hierarchy (ValidationError, AuthenticationError, AuthorizationError, NotFoundError, ConflictError, InsufficientCreditsError, RateLimitError) caught by global `errorHandler` middleware
-- Middleware pipeline order: requestId → requestLogger → helmet → cors → rateLimiter → bodyParser → routes → errorHandler
+- Middleware pipeline order: requestId → tracing (metrics) → requestLogger → helmet → cors → rateLimiter → bodyParser → routes → errorHandler
 - Stripe webhook route is mounted BEFORE the JSON body parser to receive raw body for signature verification
 - Service functions that modify credit balances must acquire a `PoolClient` via `getPool().connect()` and manage BEGIN/COMMIT/ROLLBACK explicitly
 - Property-based tests go in `tests/property/` with 100+ iterations per property using fast-check
@@ -168,6 +171,13 @@ When reviewing code or making architectural decisions, evaluate against these cr
 - stdout for info/debug, stderr for warn/error
 - In-memory request/error counters, avg response time, memory usage
 - GET /api/v1/metrics (public) and GET /api/v1/readiness (returns 503 if deps down)
+- OpenTelemetry distributed tracing: NodeSDK with auto-instrumentation for HTTP, Express, PostgreSQL, Redis
+- OTLP trace exporter (configurable endpoint via OTEL_EXPORTER_OTLP_ENDPOINT)
+- Log-trace correlation: trace_id and span_id injected into all structured log entries
+- Health/readiness/metrics probes excluded from tracing to reduce noise
+- Tracing initialized before all other imports in server.ts (required for monkey-patching)
+- Graceful shutdown flushes pending spans via shutdownTracing()
+- Configurable via OTEL_ENABLED (default true) and OTEL_EXPORTER_OTLP_ENDPOINT env vars
 
 ## Scraping Microservices Patterns (Module 3)
 - FastAPI service on port 8001 with Pydantic Settings for env validation

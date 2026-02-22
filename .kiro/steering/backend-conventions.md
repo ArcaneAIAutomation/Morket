@@ -68,7 +68,13 @@ Some modules have additional files:
 ## Observability
 
 - Structured JSON logger in `src/observability/logger.ts` with configurable LOG_LEVEL
+- Log entries include trace_id and span_id from OpenTelemetry context for log-trace correlation
 - In-memory metrics in `src/observability/metrics.ts`: request/error counters, avg response time, memory usage
+- OpenTelemetry distributed tracing in `src/observability/tracing.ts`: NodeSDK with auto-instrumentation for HTTP, Express, PostgreSQL, Redis
+- Tracing middleware in `src/middleware/tracing.ts`: records request duration and error status in in-memory metrics
+- OTLP trace exporter configurable via `OTEL_EXPORTER_OTLP_ENDPOINT` env var (default: `http://localhost:4318/v1/traces`)
+- `OTEL_ENABLED=false` disables tracing entirely; `initTracing()` must be called before all other imports in server.ts
+- Health/readiness/metrics probes excluded from tracing
 - GET /api/v1/metrics and GET /api/v1/readiness endpoints in app.ts
 
 ## Testing
@@ -103,10 +109,10 @@ Some modules have additional files:
 | Component | Path | Purpose |
 |-----------|------|---------|
 | Cache | `src/cache/` | Redis client + generic cache layer |
-| Observability | `src/observability/` | Structured logger + metrics |
+| Observability | `src/observability/` | Structured logger + metrics + OpenTelemetry tracing |
 | ClickHouse | `src/clickhouse/` | ClickHouse client + health check |
 | Config | `src/config/env.ts` | Zod-validated environment config |
-| Middleware | `src/middleware/` | Auth, RBAC, validation, rate limiting, logging, errors, requestId |
+| Middleware | `src/middleware/` | Auth, RBAC, validation, rate limiting, logging, errors, requestId, tracing |
 | Shared | `src/shared/` | DB pool, encryption, errors, envelope, types |
 
 ## Migrations

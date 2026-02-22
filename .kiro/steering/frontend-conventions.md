@@ -66,9 +66,12 @@ src/
 #### Routing (`src/App.tsx`)
 - Public routes: `/login`, `/register`
 - Protected routes wrapped in `<AuthGuard>`: `/workspaces/:workspaceId/*`
-- Workspace sub-routes: `spreadsheet` (default), `analytics`, `search`, `settings/*`
-- Lazy-loaded: AnalyticsDashboard, SearchResultsView (via `React.lazy` + `Suspense`)
+- Workspace sub-routes: `spreadsheet` (default), `jobs`, `analytics`, `search`, `settings/*`
+- Settings nested routes: `workspace` (default), `members`, `credentials`, `billing`
+- Lazy-loaded: AnalyticsDashboard, SearchResultsView, JobMonitorView, all settings pages (via `React.lazy` + `Suspense`)
+- Shared `LoadingFallback` component for all Suspense boundaries
 - Last active workspace persisted to localStorage for redirect
+- Sidebar includes nav items: spreadsheet, jobs, analytics, search, settings
 
 #### Spreadsheet (`src/components/spreadsheet/`)
 - AG Grid with `ag-theme-alpine` custom overrides
@@ -79,6 +82,8 @@ src/
 - Keyboard shortcuts: Ctrl/Cmd+Z for undo
 - Filter changes debounced at 300ms
 - Multi-row selection with checkbox column
+- EnrichmentPanel slide-over integrated into SpreadsheetView, triggered by "Enrich Selected" button in GridToolbar
+- useAutoSave hook wired into SpreadsheetView for 30s auto-save of dirty changes
 
 #### CSV Import/Export
 - Web Worker (`src/workers/csv.worker.ts`) for off-main-thread CSV parse and generate

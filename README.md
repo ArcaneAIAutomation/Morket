@@ -25,7 +25,7 @@ Morket helps sales and marketing teams enrich their prospect data by orchestrati
                            │ HTTP
 ┌──────────────────────────▼──────────────────────────────┐
 │                   API Gateway (Express.js)               │
-│  Rate Limiter → Request ID → Logger → Helmet/CORS       │
+│  Rate Limiter → Request ID → Tracing → Logger → Helmet/CORS  │
 │  → Auth (JWT) → RBAC → Zod Validation → Router          │
 └──────────────────────────┬──────────────────────────────┘
                            │
@@ -84,6 +84,7 @@ The backend follows a layered architecture: **Routes → Controllers → Service
 | Encryption | AES-256-GCM with per-workspace key derivation |
 | Validation | Zod (backend), Pydantic (scraper) |
 | Testing | Vitest + fast-check (backend), pytest + hypothesis (scraper) |
+| Distributed Tracing | OpenTelemetry (HTTP, Express, PostgreSQL, Redis auto-instrumentation) |
 | Scraping | Python 3.11+, FastAPI, Playwright (headless Chromium) |
 | Frontend | React 18+, Zustand, AG Grid, Tailwind CSS |
 | Infrastructure | Docker, Terraform, GitHub Actions, AWS (ECS, Aurora, ElastiCache, OpenSearch, S3, CloudFront) |
@@ -330,6 +331,8 @@ CLICKHOUSE_URL=http://localhost:8123
 OPENSEARCH_NODE=http://localhost:9200
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
+OTEL_ENABLED=true
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1/traces
 ```
 
 ## Project Structure
@@ -341,8 +344,8 @@ packages/
 │   │   ├── cache/                     # Redis client + generic cache layer
 │   │   ├── clickhouse/                # ClickHouse client + health check
 │   │   ├── config/env.ts              # Zod-validated env config
-│   │   ├── middleware/                 # Auth, RBAC, validation, rate limiting, logging, errors
-│   │   ├── observability/             # Structured JSON logger + in-memory metrics
+│   │   ├── middleware/                 # Auth, RBAC, validation, rate limiting, logging, errors, tracing
+│   │   ├── observability/             # Structured JSON logger + in-memory metrics + OpenTelemetry tracing
 │   │   ├── modules/
 │   │   │   ├── auth/                  # User registration, login, JWT, refresh tokens
 │   │   │   ├── workspace/             # Workspace CRUD, membership management
@@ -549,7 +552,7 @@ Eight sub-modules covering billing, integrations, data operations, workflow buil
 - **8.5 Advanced Data Operations** — CSV import (two-phase preview/commit), export (CSV/JSON), dedup scan + merge, data hygiene stats, bulk delete, saved views CRUD, record activity log
 - **8.6 Team & Collaboration** — Extended roles (viewer, billing_admin), activity feed, immutable audit log with CSV export, workspace invitations with 7-day expiry tokens
 - **8.7 Performance & Scale** — Redis caching layer (ioredis) with graceful degradation, domain-specific cache helpers (workspace config 5min, user session 15min, provider health 1min), Redis health check
-- **8.8 Observability & Operations** — Structured JSON logger with configurable levels, in-memory request/error metrics, GET /api/v1/metrics and GET /api/v1/readiness endpoints
+- **8.8 Observability & Operations** — Structured JSON logger with configurable levels, in-memory request/error metrics, GET /api/v1/metrics and GET /api/v1/readiness endpoints, OpenTelemetry distributed tracing with auto-instrumentation (HTTP, Express, PostgreSQL, Redis), OTLP exporter, log-trace correlation (trace_id/span_id in log entries)
 
 ---
 
