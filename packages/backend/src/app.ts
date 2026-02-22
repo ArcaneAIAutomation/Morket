@@ -21,6 +21,7 @@ import { createBillingRoutes } from './modules/billing/billing.routes';
 import { createIntegrationRoutes } from './modules/integration/integration.routes';
 import { createDataOpsRoutes } from './modules/data-ops/data-ops.routes';
 import { createWorkflowRoutes } from './modules/workflow/workflow.routes';
+import { createAiRoutes } from './modules/ai/ai.routes';
 
 export interface AppConfig {
   corsOrigin: string;
@@ -141,6 +142,9 @@ export function createApp(config: AppConfig): express.Express {
 
   // Workflow builder routes (authenticated, workspace-scoped)
   app.use('/api/v1/workspaces/:id/workflows', authenticate, createWorkflowRoutes());
+
+  // AI/ML intelligence routes (authenticated, workspace-scoped)
+  app.use('/api/v1/workspaces/:id/ai', authenticate, createAiRoutes());
 
   // 404 catch-all for unknown routes
   app.use((_req, res) => {
