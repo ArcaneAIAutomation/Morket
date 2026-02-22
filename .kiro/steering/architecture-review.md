@@ -49,11 +49,49 @@ When reviewing code or making architectural decisions, evaluate against these cr
 - Bulk operations must be batched (max 1000 records per batch for backend, max 100 per batch for scraper)
 - Redis caching for frequently accessed data: workspace configs (5min TTL), user sessions (15min TTL), provider health (1min TTL)
 - All Redis cache operations must be wrapped in try/catch — silent failures when Redis is unavailable (graceful degradation)
-- Frontend must never block the main thread — use Web Workers for heavy computation
+- Frontend must never block the main thread — use Web Workers for heavy computation (CSV parse/generate for ≥10k rows)
 - AG Grid with DOM virtualization for 100k+ row datasets
+- Frontend filter changes debounced at 300ms; search suggestions debounced at 200ms
+- Lazy-load heavy routes (AnalyticsDashboard, SearchResultsView) via React.lazy + Suspense
 - Scraper browser pool: configurable size (default 5, max 20), instances recycled after 100 pages
 - Scraper task queue: asyncio-based with max queue depth (500), priority scheduling (smaller jobs first)
 - Per-domain rate limiting via token bucket algorithm (default 2 req/10s per domain)
+
+## Frontend Patterns (Module 4)
+
+### State Management
+- Zustand stores: one per domain (auth, grid, workspace, job, analytics, search, ui)
+- Stores connect to API client via `connectAuthStore()` / `connectUIStore()` to avoid circular deps
+- Grid store: rows, columns, selection, pending changes, undo stack (max 50 entries), sort/filter model, per-cell enrichment status
+- Job store: enrichment jobs with 5s polling interval, terminal status detection, summary stats
+- UI store: toast queue (max 5, auto-dismiss 5s for non-errors), offline status, sidebar collapse (persisted to localStorage)
+- Active workspace ID persisted to localStorage for cross-session continuity
+
+### API Client
+- Two Axios instances: `apiClient` (30s timeout) and `enrichmentClient` (120s timeout)
+- Request interceptor: attaches Bearer token from auth store
+- Response interceptor: unwraps `{ success, data, error, meta }` envelope, returns `data` directly
+- 401: automatic token refresh + retry once; redirect to /login on failure
+- 429/403/500: fire toast notifications via UI store
+- Vite dev proxy: `/api/v1` → `http://localhost:3000`
+
+### Spreadsheet
+- AG Grid (ag-grid-react v32) with `ag-theme-alpine` custom overrides
+- Column definitions mapped from `ColumnDefinition[]` → AG Grid `ColDef[]`, excluding hidden columns
+- Cell edits → pending changes + undo stack; auto-save every 30s (skips if offline)
+- Context menu: row actions (enrich, delete, export) and column actions (rename, type, hide, delete)
+- Keyboard shortcuts: Ctrl/Cmd+Z for undo
+- CSV import via Web Worker with column mapping dialog; export all or selected rows
+
+### Permissions
+- Role-based permission map: viewer < member < admin < owner
+- `useRole()` hook returns `{ role, can(action) }`
+- Toolbar buttons and actions conditionally rendered based on `can()` checks
+- Actions: view_records, export_csv, edit_records, add_records, delete_records, import_csv, run_enrichment, manage_columns, manage_credentials, manage_members, edit_workspace, delete_workspace, manage_billing
+
+### Testing
+- Unit tests: co-located `*.test.ts(x)` with Testing Library + MSW
+- Property tests: 7 suites in `tests/property/` using fast-check (api-envelope, csv-roundtrip, enrichment-cost, grid-operations, permissions, sort-filter, toast-behavior)
 
 ## Backend Module Patterns (Modules 1–2, 5–6, 8)
 

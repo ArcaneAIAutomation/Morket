@@ -42,12 +42,18 @@ terraform/     # AWS IaC (Module 7 — COMPLETE)
 - **Migrations**: 22 sequential numbered files under `packages/backend/migrations/`
 
 ## Frontend (packages/frontend) — COMPLETE
-- **Framework**: React 18+ with TypeScript
-- **State Management**: Zustand (lightweight, performant)
-- **Grid/Spreadsheet**: AG Grid for DOM virtualization (100k+ rows)
-- **Styling**: Tailwind CSS
-- **Real-time**: WebSocket/SSE for live updates
-- **Features**: Column-level enrichment triggers, CSV/Excel import/export, keyboard shortcuts, bulk operations
+- **Framework**: React 18+ with TypeScript (strict mode)
+- **Build**: Vite 6 with `@vitejs/plugin-react`, dev proxy to backend on port 3000
+- **State Management**: Zustand 5 (one store per domain: auth, grid, workspace, job, analytics, search, ui)
+- **Grid/Spreadsheet**: AG Grid v32 (ag-grid-react) with DOM virtualization for 100k+ rows
+- **Charts**: Recharts 3 for analytics dashboards
+- **Routing**: React Router DOM v6 with lazy-loaded routes and AuthGuard
+- **HTTP Client**: Axios with dual instances (30s standard, 120s enrichment), auto token refresh, envelope unwrapping
+- **Validation**: Zod for client-side form schemas
+- **Styling**: Tailwind CSS 3 with AG Grid theme overrides
+- **Testing**: Vitest + Testing Library + MSW (API mocking) + fast-check (7 property test suites)
+- **Web Workers**: CSV parse/generate off main thread for datasets ≥10k rows
+- **Features**: Spreadsheet with undo (50-deep), auto-save (30s), context menus, column management, CSV import/export, enrichment job polling (5s), analytics dashboard (enrichment/scraping/credits tabs), full-text search with facets and typeahead, role-based UI permissions, offline detection
 
 ## Scraping Microservices (packages/scraper) — COMPLETE
 - **Language**: Python 3.11+

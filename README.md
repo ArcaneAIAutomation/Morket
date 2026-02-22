@@ -381,8 +381,30 @@ packages/
 │   ├── tests/                         # pytest + hypothesis tests
 │   └── pyproject.toml                 # Python project config (Black, Ruff, pytest)
 │
-└── frontend/                          # React spreadsheet UI (Module 4)
-    └── src/                           # React 18+, Zustand, AG Grid, Tailwind CSS
+├── frontend/                          # React spreadsheet UI (Module 4)
+│   ├── src/
+│   │   ├── api/                       # Axios HTTP client + per-domain API modules (auth, workspace, records, enrichment, analytics, search, billing, credentials, members)
+│   │   ├── components/
+│   │   │   ├── analytics/             # Dashboard with enrichment/scraping/credits tabs + Recharts
+│   │   │   ├── auth/                  # LoginForm, RegisterForm
+│   │   │   ├── enrichment/            # EnrichmentPanel, WaterfallConfig
+│   │   │   ├── jobs/                  # JobMonitor, JobRow, JobRecordDetail
+│   │   │   ├── layout/               # AppShell, AuthGuard, Header, Sidebar
+│   │   │   ├── search/               # SearchBar, SearchResultsView, FacetSidebar, SearchPagination
+│   │   │   ├── settings/             # Workspace, Billing, Credential, Member settings
+│   │   │   ├── shared/               # ErrorBoundary, Toast, ConfirmDialog, LoadingSpinner, OfflineBanner
+│   │   │   └── spreadsheet/          # SpreadsheetView (AG Grid), GridToolbar, ContextMenu, CSVImportDialog, ColumnDialog, CellRenderer, StatusBar
+│   │   ├── hooks/                     # useAuth, useAutoSave, useJobPolling, useRole, useSearch, useAnalytics, useOnlineStatus
+│   │   ├── stores/                    # Zustand stores: auth, grid, workspace, job, analytics, search, ui
+│   │   ├── types/                     # TypeScript interfaces (api, grid, enrichment, search, analytics)
+│   │   ├── utils/                     # formatters, permissions (role-based action map)
+│   │   └── workers/                   # CSV Web Worker (parse + generate off main thread)
+│   ├── tests/
+│   │   └── property/                  # 7 fast-check property test suites
+│   ├── index.html
+│   ├── vite.config.ts                 # Vite 6 + React plugin + dev proxy + Vitest config
+│   ├── tailwind.config.js
+│   └── tsconfig.json
 
 docker/                                # Dockerfiles for backend, scraper, frontend + nginx config
 terraform/                             # AWS IaC — 13 reusable modules
@@ -456,13 +478,21 @@ Python/FastAPI/Playwright scraping service for data sources without APIs. Runs a
 
 React-based spreadsheet interface using AG Grid for high-performance data manipulation. The primary user interface for viewing, editing, and enriching prospect data.
 
-- React 18+ with TypeScript and Zustand state management
-- AG Grid with DOM virtualization for 100k+ row datasets
-- Column-level enrichment triggers (right-click → enrich)
-- Real-time updates via WebSocket/SSE
-- CSV/Excel import and export
-- Tailwind CSS styling with responsive layout
-- Keyboard shortcuts and bulk operations
+- React 18+ with TypeScript (strict), Vite 6 build tooling, Tailwind CSS styling
+- Zustand 5 state management — 7 domain stores (auth, grid, workspace, job, analytics, search, ui)
+- AG Grid v32 with DOM virtualization for 100k+ row datasets, custom alpine theme overrides
+- Axios HTTP client with auto token refresh, envelope unwrapping, dual timeout instances (30s/120s)
+- Spreadsheet: cell editing with undo stack (50-deep), auto-save (30s interval), context menus, column management (add/hide/reorder/resize/delete)
+- CSV import/export via Web Worker for off-main-thread processing (≥10k rows), with column mapping dialog and progress reporting
+- Enrichment job polling (5s interval) with terminal status detection, toast notifications, and automatic grid cell updates
+- Analytics dashboard: 3 tabs (enrichment/scraping/credits) with Recharts charts, time range filters (24h/7d/30d/90d/custom), parallel data fetching
+- Full-text search: debounced typeahead (200ms), faceted sidebar, sort by relevance/date/name, pagination, highlighted matches
+- Role-based UI permissions: viewer < member < admin < owner, toolbar buttons conditionally rendered via `useRole()` hook
+- Offline detection with banner warning, auto-save skip when offline
+- Lazy-loaded routes (AnalyticsDashboard, SearchResultsView) via React.lazy + Suspense
+- Settings pages: workspace config, billing/credits, credential management (masked keys), member management
+- 7 property-based test suites (fast-check): api-envelope, csv-roundtrip, enrichment-cost, grid-operations, permissions, sort-filter, toast-behavior
+- Unit tests with Testing Library + MSW for API mocking
 
 ---
 
