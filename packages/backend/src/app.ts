@@ -20,6 +20,7 @@ import { createSearchRoutes } from './modules/search/search.routes';
 import { createBillingRoutes } from './modules/billing/billing.routes';
 import { createIntegrationRoutes } from './modules/integration/integration.routes';
 import { createDataOpsRoutes } from './modules/data-ops/data-ops.routes';
+import { createWorkflowRoutes } from './modules/workflow/workflow.routes';
 
 export interface AppConfig {
   corsOrigin: string;
@@ -137,6 +138,9 @@ export function createApp(config: AppConfig): express.Express {
 
   // Data operations routes (authenticated, workspace-scoped)
   app.use('/api/v1/workspaces/:id/data-ops', authenticate, createDataOpsRoutes());
+
+  // Workflow builder routes (authenticated, workspace-scoped)
+  app.use('/api/v1/workspaces/:id/workflows', authenticate, createWorkflowRoutes());
 
   // 404 catch-all for unknown routes
   app.use((_req, res) => {
