@@ -15,10 +15,12 @@ import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 
 import { useGridStore } from '@/stores/grid.store';
+import { useAutoSave } from '@/hooks/useAutoSave';
 import CellRenderer from './CellRenderer';
 import GridToolbar from './GridToolbar';
 import StatusBar from './StatusBar';
 import ContextMenu from './ContextMenu';
+import { EnrichmentPanel } from '@/components/enrichment/EnrichmentPanel';
 
 export default function SpreadsheetView() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
@@ -37,6 +39,12 @@ export default function SpreadsheetView() {
   const setFilterModel = useGridStore((s) => s.setFilterModel);
   const setSelectedRows = useGridStore((s) => s.setSelectedRows);
   const undo = useGridStore((s) => s.undo);
+
+  // Enrichment panel state
+  const [enrichmentOpen, setEnrichmentOpen] = useState(false);
+
+  // Auto-save dirty changes every 30s
+  useAutoSave(workspaceId ?? null);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -185,7 +193,7 @@ export default function SpreadsheetView() {
 
   return (
     <div className="flex flex-col h-full">
-      <GridToolbar />
+      <GridToolbar onEnrich={() => setEnrichmentOpen(true)} />
 
       <div className="flex-1 ag-theme-alpine">
         <AgGridReact
@@ -214,9 +222,15 @@ export default function SpreadsheetView() {
         visible={contextMenu.visible}
         type={contextMenu.type}
         onClose={closeContextMenu}
+        onEnrichSelected={() => setEnrichmentOpen(true)}
       />
 
       <StatusBar />
+
+      <EnrichmentPanel
+        open={enrichmentOpen}
+        onClose={() => setEnrichmentOpen(false)}
+      />
     </div>
   );
 }

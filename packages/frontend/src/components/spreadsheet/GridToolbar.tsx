@@ -5,7 +5,7 @@ import { useRole } from '@/hooks/useRole';
 import ColumnDialog from './ColumnDialog';
 import CSVImportDialog from './CSVImportDialog';
 
-export default function GridToolbar() {
+export default function GridToolbar({ onEnrich }: { onEnrich?: () => void }) {
   const { can } = useRole();
   const addRow = useGridStore((s) => s.addRow);
   const selectedRowIds = useGridStore((s) => s.selectedRowIds);
@@ -144,6 +144,16 @@ export default function GridToolbar() {
           className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
         >
           Import CSV
+        </button>
+      )}
+
+      {can('run_enrichment') && (
+        <button
+          onClick={onEnrich}
+          disabled={selectedRowIds.size === 0}
+          className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Enrich Selected
         </button>
       )}
 

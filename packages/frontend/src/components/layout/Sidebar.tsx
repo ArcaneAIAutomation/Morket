@@ -4,6 +4,7 @@ import { useUIStore } from '@/stores/ui.store';
 const NAV_ITEMS = [
   { to: 'spreadsheet', label: 'Spreadsheet', icon: '📊' },
   { to: 'jobs', label: 'Jobs', icon: '⚡' },
+  { to: 'search', label: 'Search', icon: '🔍' },
   { to: 'analytics', label: 'Analytics', icon: '📈' },
   { to: 'settings/workspace', label: 'Settings', icon: '⚙️' },
 ];
