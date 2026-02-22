@@ -9,6 +9,7 @@ import { createAuthMiddleware } from './middleware/auth';
 import { successResponse, errorResponse } from './shared/envelope';
 import { healthCheck as clickHouseHealthCheck } from './clickhouse/client';
 import { healthCheck as openSearchHealthCheck } from './modules/search/opensearch/client';
+import { redisHealthCheck } from './cache/redis';
 import { createAuthRoutes } from './modules/auth/auth.routes';
 import { createWorkspaceRoutes } from './modules/workspace/workspace.routes';
 import { createCredentialRoutes } from './modules/credential/credential.routes';
@@ -67,10 +68,13 @@ export function createApp(config: AppConfig): express.Express {
       // Non-blocking — report as unavailable
     }
 
+    const redisHealthy = await redisHealthCheck();
+
     res.json(successResponse({
       status: 'ok',
       clickhouse: chHealthy ? 'ok' : 'unavailable',
       opensearch: osStatus,
+      redis: redisHealthy ? 'ok' : 'unavailable',
     }));
   });
 

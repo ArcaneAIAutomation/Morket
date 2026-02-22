@@ -122,6 +122,11 @@ const envSchema = z.object({
   INTEGRATION_OAUTH_REDIRECT_BASE: z
     .string()
     .default('http://localhost:3000/api/v1/integrations/callback'),
+
+  // Redis
+  REDIS_URL: z
+    .string()
+    .optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
