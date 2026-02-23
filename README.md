@@ -1,20 +1,133 @@
 # Morket
 
-A modern GTM (Go-To-Market) data engine — think Clay.com, built from scratch. Morket provides data enrichment orchestration, multi-tenant workspace management, and a consumption-based credit system, all backed by a robust TypeScript/Express API.
+A production-grade GTM (Go-To-Market) data engine — think Clay.com, built from scratch. Morket orchestrates multi-provider data enrichment, headless browser scraping, and real-time analytics through a dual-database architecture, all wrapped in a spreadsheet UI that handles 100k+ rows without breaking a sweat.
+
+14 self-contained backend modules. 6 layers of defense-in-depth security. 59 formally specified correctness properties. 400+ tests. One monorepo.
 
 ## What is Morket?
 
-Morket helps sales and marketing teams enrich their prospect data by orchestrating calls to multiple data providers (Apollo, Clearbit, LinkedIn, etc.) through a unified platform. Teams get:
+Morket helps sales and marketing teams enrich their prospect data by orchestrating calls to multiple data providers (Apollo, Clearbit, LinkedIn, etc.) through a unified platform. It combines a durable workflow engine (Temporal.io), a headless scraping fleet (Playwright), and a consumption-based credit system into a single cohesive product. Teams get:
 
 - **Multi-tenant workspaces** to organize enrichment activities
-- **Encrypted credential storage** for third-party API keys
+- **Encrypted credential storage** for third-party API keys (AES-256-GCM, per-workspace key derivation)
 - **Consumption-based billing** with Stripe subscriptions and credit packs
 - **Role-based access control** across workspace members (owner, admin, member, viewer, billing_admin)
 - **A spreadsheet-like UI** for managing and enriching data (AG Grid with 100k+ row support)
 - **CRM integrations** with Salesforce and HubSpot (OAuth2, bi-directional sync)
 - **Visual workflow builder** for multi-step enrichment pipelines
 - **AI-powered intelligence** — quality scoring, field mapping, duplicate detection, natural language queries
-- **Web scraping** via headless Chromium for data sources without APIs
+- **Web scraping** via headless Chromium with anti-detection, proxy rotation, and domain rate limiting
+- **Dual-database analytics** — PostgreSQL for OLTP, ClickHouse for OLAP, with CDC replication between them
+- **Full-text search** with fuzzy matching, faceted filtering, and typeahead via OpenSearch
+
+## Security
+
+Morket implements defense-in-depth security across six layers — from infrastructure hardening down to supply chain verification. Every layer is backed by formally specified correctness properties validated through property-based testing.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Layer 6: Supply Chain                                          │
+│  Pinned deps · npm/pip audit · Trivy · Gitleaks · SHA Actions  │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer 5: Observability & Audit                                 │
+│  Redacted logs · Security events · Trace correlation · Audit   │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer 4: Data Protection                                       │
+│  AES-256-GCM · HKDF · XSS encoding · SSRF prevention · CSV    │
+├─────────────────────────────────────────────────────────────────┤
+│  Layer 3: Authentication & Authorization                        │
+│  JWT (iss/aud/jti) · Lockout · Replay detection · RBAC · 5 roles│
+├─────────────────────────────────────────────────────────────────┤
+│  Layer 2: API Gateway                                           │
+│  Rate limiting · Security headers · CORS allowlist · Body limits│
+├─────────────────────────────────────────────────────────────────┤
+│  Layer 1: Edge & Infrastructure                                 │
+│  HTTPS/HSTS · CSP · Pinned images · Read-only FS · VPC · KMS  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Layer 1: Edge & Infrastructure
+
+- HTTPS everywhere with HSTS (1-year max-age, includeSubDomains)
+- Content Security Policy preventing XSS and clickjacking
+- Pinned Docker base images with provenance labels
+- Read-only container filesystems with dropped Linux capabilities (`no-new-privileges`)
+- VPC flow logs, restricted security groups (ports 3000/8001/7233 only)
+- Encryption at rest for Aurora, Redis, OpenSearch, RabbitMQ, and S3
+- Encryption in transit via TLS/SSL on all inter-service communication
+- Automatic secret rotation on a 90-day interval via AWS Secrets Manager
+
+### Layer 2: API Gateway
+
+- Route-specific rate limiting — auth: 5/min, enrichment: 20/min, admin: 10/min, general: 100/min — with `Retry-After` headers on 429 responses
+- Security headers: HSTS, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Permissions-Policy` (camera/microphone/geolocation disabled), `X-Powered-By` removed
+- CORS with explicit origin allowlist (no wildcards)
+- Request body limits: 1MB JSON, 10MB file uploads
+- Production error sanitization — stack traces, file paths, and raw database errors are stripped from all client-facing responses
+
+### Layer 3: Authentication & Authorization
+
+- JWT tokens with `iss`/`aud` validation, unique token IDs (`jti`), and Redis-based revocation list
+- Account lockout after 5 failed login attempts within a 15-minute window
+- Generic error messages on login failure — prevents user enumeration for both non-existent emails and wrong passwords
+- Refresh token replay detection — if a previously used token is presented, all tokens for that user are immediately revoked
+- Maximum 10 active refresh tokens per user with FIFO eviction of oldest tokens
+- Token expiry enforced at the config level via Zod schemas (max 15min access, max 7d refresh)
+- RBAC with workspace ID cross-check on URL parameters, object-level ownership middleware, and billing_admin isolation
+- 5 role tiers: `owner` > `admin` > `member` > `viewer` + `billing_admin`
+
+### Layer 4: Data Protection
+
+- AES-256-GCM encryption with HKDF per-workspace key derivation
+- Master key validation (exactly 32 bytes) with workspace ID hash as HKDF salt
+- Write-verify pattern: every encrypted value is decrypted immediately after write to confirm integrity
+- HTML entity encoding on all rendered content (XSS prevention)
+- CSV formula injection detection — blocks cells starting with `=`, `+`, `-`, `@`
+- SSRF prevention via DNS resolution and private IP range rejection (RFC 1918, loopback, link-local)
+- AI-generated filter validation against a field name whitelist and operator set
+
+### Layer 5: Observability & Audit
+
+- Sensitive header redaction: `Authorization`, `X-Service-Key` → `[REDACTED]`
+- Sensitive field redaction: `password`, `secret`, `token`, `apiKey` → `[REDACTED]`
+- Security event logging with OpenTelemetry `trace_id`/`span_id` correlation
+- Dedicated logging functions: `logAuthFailure`, `logAuthzFailure`, `logRateLimitHit`, `logWebhookFailure`
+- Credential CRUD audit trail — logs user ID, workspace ID, and credential ID, never the credential value
+- Webhook HMAC includes timestamp in the signed payload for replay prevention (5-minute window)
+
+### Layer 6: Supply Chain
+
+- All npm and pip dependencies pinned to exact versions — no `^`, `~`, or `>=` ranges
+- `npm audit` + `pip-audit` run in CI on every build
+- Trivy container image scanning for CRITICAL and HIGH CVEs
+- Gitleaks secret scanning on every PR and deploy
+- GitHub Actions pinned to commit SHAs (not mutable version tags)
+- Docker build context verified clean of `.env` files and secret patterns
+
+### Formal Verification
+
+26 security correctness properties are defined as formal specifications and validated through property-based testing with 100+ iterations per property:
+
+| Layer | Framework | Properties | Coverage |
+|-------|-----------|------------|----------|
+| Backend | fast-check | 15 | Auth, RBAC, rate limiting, encryption, sanitization, logging, webhooks |
+| Frontend | fast-check | 2 | Deep link validation, content sanitization |
+| Scraper | hypothesis | 9 | URL validation, key comparison, credential handling, webhook signing |
+
+These properties are not example-based tests — they generate randomized inputs across the entire input space to verify that security invariants hold universally.
+
+## Why Morket?
+
+This isn't a CRUD app with a login page. Morket is a full-stack data platform built to production standards:
+
+- **14 self-contained backend modules** following clean architecture (Routes → Controllers → Services → Repositories)
+- **Dual-database architecture** — PostgreSQL for OLTP, ClickHouse (ReplacingMergeTree) for OLAP, with CDC replication
+- **Temporal.io** for durable, fault-tolerant enrichment workflows with idempotency keys and cancellation signals
+- **Headless browser scraping** with anti-detection (fingerprint randomization, webdriver masking), proxy rotation, and per-domain rate limiting
+- **AG Grid spreadsheet** handling 100k+ rows with DOM virtualization, undo stack, auto-save, and Web Worker CSV processing
+- **59 correctness properties** validated by property-based tests (33 enrichment/core + 26 security) across three frameworks
+- **Full AWS infrastructure as code** — 13 Terraform modules, GitHub Actions CI/CD with path-filtered builds and production approval gates
+- **Defense-in-depth security** across 6 layers, from HSTS and CSP at the edge to pinned dependencies and container scanning in the supply chain
 
 ## Architecture
 
@@ -77,19 +190,19 @@ The backend follows a layered architecture: **Routes → Controllers → Service
 | Database (OLTP) | PostgreSQL (Aurora-compatible) |
 | Database (OLAP) | ClickHouse (ReplacingMergeTree) |
 | Search | OpenSearch/ElasticSearch |
-| Cache | Redis (ioredis) |
+| Cache | Redis (ioredis) with graceful degradation |
 | Workflow Engine | Temporal.io (durable enrichment workflows) |
 | Billing | Stripe (subscriptions, credit packs, webhooks) |
-| Auth | JWT (15min access / 7d refresh) with bcrypt |
-| Encryption | AES-256-GCM with per-workspace key derivation |
-| Validation | Zod (backend), Pydantic (scraper) |
-| Testing | Vitest + fast-check (backend), pytest + hypothesis (scraper) |
+| Auth | JWT (15min access / 7d refresh) with bcrypt (12 rounds) |
+| Encryption | AES-256-GCM with HKDF per-workspace key derivation |
+| Validation | Zod (backend + frontend), Pydantic (scraper) |
+| Testing | Vitest + fast-check (TypeScript), pytest + hypothesis (Python) |
 | Distributed Tracing | OpenTelemetry (HTTP, Express, PostgreSQL, Redis auto-instrumentation) |
 | Scraping | Python 3.11+, FastAPI, Playwright (headless Chromium) |
-| Frontend | React 18+, Zustand, AG Grid, Tailwind CSS |
-| Infrastructure | Docker, Terraform, GitHub Actions, AWS (ECS, Aurora, ElastiCache, OpenSearch, S3, CloudFront) |
+| Frontend | React 18+, Zustand 5, AG Grid v32, Recharts, Tailwind CSS |
+| Infrastructure | Docker, Terraform (13 modules), GitHub Actions, AWS (ECS Fargate, Aurora, ElastiCache, OpenSearch, S3, CloudFront) |
 
-## Current Status: Security Audit ✅
+## Current Status: Complete ✅
 
 All 8 modules are complete, plus a comprehensive security audit. Application code (Modules 1–6) covers the full backend API, enrichment orchestration, scraping microservices, spreadsheet UI, OLAP analytics, and search layer. Module 7 provides Docker containerization, Terraform IaC for AWS, and GitHub Actions CI/CD. Module 8 adds Stripe billing, CRM integrations, advanced data operations, workflow builder, AI/ML intelligence, team collaboration, Redis caching, and observability. The security audit hardens all layers with 26 property-based correctness tests.
 
@@ -418,15 +531,19 @@ docker-compose.yml                     # Full local dev stack
 ## Testing
 
 ```bash
-npm test              # Run all 400 tests
+npm test              # Run all 400+ tests
 npm run test:watch    # Watch mode
 npm run test:coverage # With coverage report
 ```
 
-The test suite includes:
-- **Unit tests** — Schema validation, error classes, middleware behavior, service logic, adapter behavior
-- **Property-based tests** — 33 correctness properties with 100+ iterations each (fast-check) covering auth, RBAC, workspace, credential, credit, circuit breaker, waterfall enrichment, and idempotency
-- **Integration tests** — Full HTTP flows: register → login → workspace → credentials → billing → enrichment jobs → webhooks → providers
+The test suite spans three frameworks across three languages:
+
+- **400+ unit and integration tests** covering schema validation, middleware behavior, service logic, adapter behavior, and full HTTP flows
+- **59 property-based correctness properties** (33 enrichment/core + 26 security) — not example-based tests, but formal specifications that generate randomized inputs to verify invariants hold universally
+- **100+ iterations per property = 5,900+ generated test cases** across the full input space
+- **Three testing frameworks**: Vitest + fast-check (TypeScript backend/frontend), pytest + hypothesis (Python scraper)
+
+Property coverage includes: auth, RBAC, encryption, rate limiting, circuit breaker, waterfall enrichment, idempotency, webhooks, input sanitization, SSRF prevention, deep link validation, credential handling, and audit logging.
 
 ## Roadmap
 
@@ -559,20 +676,7 @@ Eight sub-modules covering billing, integrations, data operations, workflow buil
 ### ✅ Security Audit
 > *Status: Complete*
 
-Comprehensive security hardening across all layers of the platform. 13 requirement areas, 26 correctness properties validated by property-based tests.
-
-- **Authentication hardening** — JWT claim validation (iss/aud/jti), account lockout (5 attempts/15min), generic login errors, refresh token replay detection, max 10 tokens per user, token expiry Zod validation
-- **Authorization hardening** — Workspace ID cross-check on URL params, object-level ownership middleware, billing_admin role restriction, role hierarchy enforcement
-- **Input validation** — HTML entity encoding, CSV formula injection detection, SSRF prevention (DNS resolution + private IP rejection), AI filter whitelist validation, Zod on all routes
-- **API hardening** — Route-specific rate limits with Retry-After headers, security headers middleware (HSTS, CSP, X-Frame-Options DENY), CORS origin allowlist, body size limits (1MB JSON, 10MB uploads), production error sanitization
-- **Encryption** — Master key length validation, workspace ID hash as HKDF salt, write-verify pattern
-- **Security logging** — Header/field redaction, security event functions with trace_id/span_id correlation, credential audit logging
-- **Webhook security** — Timestamp replay prevention (5-min window), HTTPS-only URLs, SSRF protection
-- **Scraper hardening** — Constant-time key comparison, URL scheme + private IP validation, no hardcoded secrets
-- **Frontend security** — Content sanitization, deep link parameter validation, Referrer-Policy, tokens in memory only
-- **Infrastructure** — Nginx HTTPS + HSTS + CSP, pinned Docker images with labels, Terraform VPC flow logs + SG restrictions + encryption at rest/transit, secret rotation
-- **CI/CD** — npm audit, pip-audit, Trivy container scanning, gitleaks secret scanning, SHA-pinned GitHub Actions, pinned dependency versions
-- **26 property-based tests** across backend (fast-check), frontend (fast-check), and scraper (hypothesis) with 100+ iterations each
+Defense-in-depth security hardening across all 6 layers of the platform — infrastructure, API gateway, authentication, data protection, observability, and supply chain. 13 requirement areas with 26 formally specified correctness properties validated by property-based tests. See the [Security](#security) section above for full details.
 
 ---
 
