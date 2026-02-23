@@ -15,6 +15,14 @@ resource "aws_ecs_task_definition" "backend" {
     essential = true
     portMappings = [{ containerPort = 3000, protocol = "tcp" }]
 
+    readonlyRootFilesystem = true
+
+    linuxParameters = {
+      capabilities = {
+        drop = ["ALL"]
+      }
+    }
+
     environment = [for k, v in var.backend_env_vars : { name = k, value = v }]
     secrets     = [for k, v in var.backend_secrets : { name = k, valueFrom = v }]
 
@@ -81,6 +89,14 @@ resource "aws_ecs_task_definition" "scraper" {
     essential = true
     portMappings = [{ containerPort = 8001, protocol = "tcp" }]
 
+    readonlyRootFilesystem = true
+
+    linuxParameters = {
+      capabilities = {
+        drop = ["ALL"]
+      }
+    }
+
     environment = [for k, v in var.scraper_env_vars : { name = k, value = v }]
     secrets     = [for k, v in var.scraper_secrets : { name = k, valueFrom = v }]
 
@@ -146,6 +162,14 @@ resource "aws_ecs_task_definition" "temporal_worker" {
     image     = var.temporal_worker_image
     essential = true
     command   = ["node", "dist/modules/enrichment/temporal/worker.js"]
+
+    readonlyRootFilesystem = true
+
+    linuxParameters = {
+      capabilities = {
+        drop = ["ALL"]
+      }
+    }
 
     environment = [for k, v in var.temporal_worker_env_vars : { name = k, value = v }]
     secrets     = [for k, v in var.temporal_worker_secrets : { name = k, valueFrom = v }]
@@ -222,6 +246,14 @@ resource "aws_ecs_task_definition" "temporal_server" {
     image     = var.temporal_server_image
     essential = true
     portMappings = [{ containerPort = 7233, protocol = "tcp" }]
+
+    readonlyRootFilesystem = true
+
+    linuxParameters = {
+      capabilities = {
+        drop = ["ALL"]
+      }
+    }
 
     environment = [for k, v in var.temporal_server_env_vars : { name = k, value = v }]
     secrets     = [for k, v in var.temporal_server_secrets : { name = k, valueFrom = v }]

@@ -17,24 +17,47 @@ jobs:
     outputs:
       image_tag: ${{ steps.meta.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        with:
+          fetch-depth: 0
 
       - name: Set image tag
         id: meta
         run: echo "tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
+      - name: Secret scanning with gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.18.1/gitleaks_8.18.1_linux_x64.tar.gz | tar xz
+          chmod +x gitleaks
+          ./gitleaks detect --source . --verbose --exit-code 1
+
+      - name: Verify no secrets in Docker build context
+        run: |
+          echo "Checking for .env files in build context..."
+          if find . -name '.env' -o -name '.env.*' -o -name '.env.local' -o -name '.env.production' | grep -v node_modules | grep -v .git | grep -q .; then
+            echo "ERROR: .env files found in Docker build context:"
+            find . -name '.env' -o -name '.env.*' -o -name '.env.local' -o -name '.env.production' | grep -v node_modules | grep -v .git
+            exit 1
+          fi
+          echo "Checking for common secret patterns in tracked files..."
+          if git ls-files | xargs grep -l -E '(AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |DSA )?PRIVATE KEY-----|sk_live_[a-zA-Z0-9]{24,}|ghp_[a-zA-Z0-9]{36}|xox[bpoas]-[a-zA-Z0-9-]+)' 2>/dev/null; then
+            echo "ERROR: Potential secrets/API keys detected in tracked files"
+            exit 1
+          fi
+          echo "No secrets detected in Docker build context"
+
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
         id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a0945b076 # v2
 
       - name: Build and push backend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@4a13e500e55cf31b7a5d59a38ab2040ab0f42f56 # v5
         with:
           context: .
           file: docker/backend.Dockerfile
@@ -44,7 +67,7 @@ jobs:
             ${{ steps.ecr.outputs.registry }}/morket-backend:latest
 
       - name: Build and push scraper
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@4a13e500e55cf31b7a5d59a38ab2040ab0f42f56 # v5
         with:
           context: .
           file: docker/scraper.Dockerfile
@@ -54,7 +77,7 @@ jobs:
             ${{ steps.ecr.outputs.registry }}/morket-scraper:latest
 
       - name: Build and push frontend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@4a13e500e55cf31b7a5d59a38ab2040ab0f42f56 # v5
         with:
           context: .
           file: docker/frontend.Dockerfile
@@ -69,17 +92,17 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
         id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a0945b076 # v2
 
       - name: Run database migrations
         run: |
@@ -138,17 +161,17 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
         id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a0945b076 # v2
 
       - name: Run database migrations
         run: |

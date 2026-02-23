@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\models\requests.py
+# hypothesis_version: 6.151.9
+
+[100, 120, 'cancelled', 'company_website', 'completed', 'failed', 'job_posting', 'linkedin_profile', 'partially_completed', 'queued', 'running']

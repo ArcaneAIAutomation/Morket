@@ -101,7 +101,7 @@ vi.mock('../../src/middleware/rateLimiter', () => ({
 // ---------------------------------------------------------------------------
 
 const config: AppConfig = {
-  corsOrigin: '*',
+  corsOrigins: ['*'],
   jwtSecret: 'test-secret',
   jwtAccessExpiry: '15m',
   jwtRefreshExpiry: '7d',

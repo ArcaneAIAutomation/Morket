@@ -9,7 +9,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const NUM_RUNS = 100;
 
 const app = createApp({
-  corsOrigin: '*',
+  corsOrigins: ['*'],
   jwtSecret: 'test-secret-that-is-at-least-32-chars-long',
   jwtAccessExpiry: '15m',
   jwtRefreshExpiry: '7d',

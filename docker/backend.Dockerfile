@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM node:20-alpine AS builder
+FROM node:20.11-alpine AS builder
 
 WORKDIR /app
 
@@ -13,7 +13,11 @@ COPY packages/backend/migrations/ ./migrations/
 RUN npm run build
 
 # Stage 2: Production
-FROM node:20-alpine AS production
+FROM node:20.11-alpine AS production
+
+LABEL maintainer="morket-team"
+LABEL version="1.0.0"
+LABEL description="Morket backend API server"
 
 RUN addgroup -g 1001 morket && adduser -u 1001 -G morket -s /bin/sh -D morket
 

@@ -1,5 +1,5 @@
 # Stage 1: Build dependencies
-FROM python:3.11-slim AS builder
+FROM python:3.11.7-slim AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -11,7 +11,11 @@ COPY packages/scraper/pyproject.toml ./
 RUN pip install --no-cache-dir --prefix=/install .
 
 # Stage 2: Production
-FROM python:3.11-slim AS production
+FROM python:3.11.7-slim AS production
+
+LABEL maintainer="morket-team"
+LABEL version="1.0.0"
+LABEL description="Morket scraping microservice with headless Chromium"
 
 # Install Chromium dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -48,7 +52,7 @@ USER morket
 RUN python -m playwright install chromium
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/morket/.cache/ms-playwright
-ENV CHROMIUM_FLAGS="--no-sandbox --disable-dev-shm-usage --disable-gpu"
+ENV CHROMIUM_FLAGS="--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-extensions --disable-background-networking"
 
 EXPOSE 8001
 

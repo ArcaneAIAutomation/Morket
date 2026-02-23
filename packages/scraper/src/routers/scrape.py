@@ -12,7 +12,7 @@ import logging
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
 from src.middleware.error_handler import TaskNotFoundError
 from src.models.requests import (
@@ -22,6 +22,7 @@ from src.models.requests import (
     TaskStatus,
 )
 from src.models.responses import ApiResponse
+from src.validators.url_validator import validate_url
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,12 @@ def create_scrape_router(
     @scrape_router.post("")
     async def create_task(body: ScrapeRequest, request: Request) -> dict:
         """Submit an async scrape task. Returns 202 with task_id and status 'queued'."""
+        if not await validate_url(body.target_url):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid target URL: only http/https schemes to public IPs are allowed",
+            )
+
         task = ScrapeTaskState(
             id=str(uuid4()),
             job_id=None,
@@ -71,6 +78,12 @@ def create_scrape_router(
     @scrape_router.post("/sync")
     async def create_sync_task(body: SyncScrapeRequest, request: Request) -> dict:
         """Submit a sync scrape task. Blocks until result or timeout."""
+        if not await validate_url(body.target_url):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid target URL: only http/https schemes to public IPs are allowed",
+            )
+
         task = ScrapeTaskState(
             id=str(uuid4()),
             job_id=None,

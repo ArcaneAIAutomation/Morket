@@ -17,6 +17,11 @@ export const refreshSchema = z.object({
   refreshToken: z.string().min(1),
 });
 
+export const changePasswordSchema = z.object({
+  oldPassword: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+
 // --- Inferred Types ---
 
 export type RegisterInput = z.infer<typeof registerSchema>;

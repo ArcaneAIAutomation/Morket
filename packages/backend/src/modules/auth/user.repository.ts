@@ -63,3 +63,11 @@ export async function findById(id: string): Promise<User | null> {
   );
   return result.rows[0] ? toUser(result.rows[0]) : null;
 }
+
+
+export async function updatePasswordHash(userId: string, passwordHash: string): Promise<void> {
+  await query(
+    `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`,
+    [passwordHash, userId],
+  );
+}

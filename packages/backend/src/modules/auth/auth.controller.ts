@@ -8,6 +8,7 @@ export interface AuthController {
   login(req: Request, res: Response, next: NextFunction): Promise<void>;
   refresh(req: Request, res: Response, next: NextFunction): Promise<void>;
   logout(req: Request, res: Response, next: NextFunction): Promise<void>;
+  changePassword(req: Request, res: Response, next: NextFunction): Promise<void>;
 }
 
 export function createAuthController(config: AuthConfig): AuthController {
@@ -47,7 +48,18 @@ export function createAuthController(config: AuthConfig): AuthController {
       try {
         const { refreshToken } = req.body;
         await authService.logout(refreshToken);
-        res.status(200).json(successResponse({ message: 'Logged out' }));
+        res.status(204).send();
+      } catch (err) {
+        next(err);
+      }
+    },
+
+    async changePassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const userId = (req as any).user?.userId;
+        const { oldPassword, newPassword } = req.body;
+        await authService.changePassword(userId, oldPassword, newPassword, config);
+        res.status(200).json(successResponse({ message: 'Password changed' }));
       } catch (err) {
         next(err);
       }

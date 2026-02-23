@@ -1,5 +1,6 @@
 import { deriveWorkspaceKey, encrypt, decrypt } from '../../shared/encryption';
 import { NotFoundError } from '../../shared/errors';
+import { logger } from '../../observability/logger';
 import * as credentialRepository from './credential.repository';
 import type { ApiCredential } from './credential.repository';
 
@@ -43,7 +44,7 @@ export async function store(
   // encryptedSecret field as: base64(iv):base64(authTag):base64(ciphertext)
   const encryptedSecretBlob = `${encryptedSecretResult.iv}:${encryptedSecretResult.authTag}:${encryptedSecretResult.ciphertext}`;
 
-  return credentialRepository.create({
+  const result = await credentialRepository.create({
     workspaceId,
     providerName,
     encryptedKey: encryptedKeyResult.ciphertext,
@@ -52,6 +53,16 @@ export async function store(
     authTag: encryptedKeyResult.authTag,
     createdBy,
   });
+
+  logger.info('Credential audit: credential created', {
+    event_type: 'credential_created',
+    userId: createdBy,
+    workspaceId,
+    credentialId: result.id,
+    providerName,
+  });
+
+  return result;
 }
 
 /**
@@ -61,7 +72,7 @@ export async function store(
 export async function list(workspaceId: string, encryptionMasterKey: string): Promise<MaskedCredential[]> {
   const credentials = await credentialRepository.findAllByWorkspace(workspaceId);
 
-  return credentials.map(({ encryptedKey, encryptedSecret, iv, authTag, ...rest }) => {
+  const masked = credentials.map(({ encryptedKey, encryptedSecret, iv, authTag, ...rest }) => {
     const workspaceKey = getWorkspaceKey(workspaceId, encryptionMasterKey);
     const rawKey = decrypt(encryptedKey, iv, authTag, workspaceKey);
     return {
@@ -69,6 +80,14 @@ export async function list(workspaceId: string, encryptionMasterKey: string): Pr
       maskedKey: maskValue(rawKey),
     };
   });
+
+  logger.info('Credential audit: credentials listed', {
+    event_type: 'credential_listed',
+    workspaceId,
+    count: masked.length,
+  });
+
+  return masked;
 }
 
 /**
@@ -80,6 +99,12 @@ export async function deleteCredential(credentialId: string): Promise<void> {
     throw new NotFoundError(`Credential ${credentialId} not found`);
   }
   await credentialRepository.deleteCredential(credentialId);
+
+  logger.info('Credential audit: credential deleted', {
+    event_type: 'credential_deleted',
+    credentialId,
+    workspaceId: existing.workspaceId,
+  });
 }
 
 /**
@@ -106,6 +131,12 @@ export async function decryptCredential(credentialId: string, encryptionMasterKe
   const rawSecret = decrypt(secretCiphertext, secretIv, secretAuthTag, workspaceKey);
 
   await credentialRepository.updateLastUsed(credentialId);
+
+  logger.info('Credential audit: credential decrypted', {
+    event_type: 'credential_decrypted',
+    credentialId,
+    workspaceId: credential.workspaceId,
+  });
 
   return { key: rawKey, secret: rawSecret };
 }

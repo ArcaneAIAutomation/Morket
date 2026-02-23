@@ -13,7 +13,7 @@ import { createSearchIndexingPipeline } from './modules/search/search.indexing-p
 import { createSearchCache } from './modules/search/search.cache';
 
 const app = createApp({
-  corsOrigin: env.CORS_ORIGIN,
+  corsOrigins: env.CORS_ORIGINS,
   jwtSecret: env.JWT_SECRET,
   jwtAccessExpiry: env.JWT_ACCESS_EXPIRY,
   jwtRefreshExpiry: env.JWT_REFRESH_EXPIRY,

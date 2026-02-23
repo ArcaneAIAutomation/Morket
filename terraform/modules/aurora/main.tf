@@ -26,6 +26,12 @@ resource "aws_rds_cluster_parameter_group" "main" {
     value = "1000"
   }
 
+  parameter {
+    name         = "rds.force_ssl"
+    value        = "1"
+    apply_method = "pending-reboot"
+  }
+
   tags = local.common_tags
 }
 

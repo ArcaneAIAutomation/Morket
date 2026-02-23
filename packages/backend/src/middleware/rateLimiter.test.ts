@@ -5,6 +5,8 @@ import {
   createRateLimiter,
   authRateLimiter,
   generalRateLimiter,
+  enrichmentRateLimiter,
+  adminRateLimiter,
   _resetRateLimiterState,
 } from './rateLimiter';
 
@@ -61,6 +63,21 @@ describe('rateLimiter', () => {
       expect(res.body.error.code).toBe('RATE_LIMIT_EXCEEDED');
     });
 
+    it('includes Retry-After header on 429 responses', async () => {
+      const limiter = createRateLimiter({ windowMs: 60000, maxRequests: 1 });
+      const app = createApp(limiter);
+
+      await request(app).get('/test');
+      const res = await request(app).get('/test');
+
+      expect(res.status).toBe(429);
+      const retryAfter = res.headers['retry-after'];
+      expect(retryAfter).toBeDefined();
+      const seconds = Number(retryAfter);
+      expect(seconds).toBeGreaterThan(0);
+      expect(seconds).toBeLessThanOrEqual(60);
+    });
+
     it('resets after the window expires', async () => {
       const now = Date.now();
       vi.spyOn(Date, 'now')
@@ -113,6 +130,30 @@ describe('rateLimiter', () => {
       const app = createApp(generalRateLimiter);
 
       for (let i = 0; i < 100; i++) {
+        const res = await request(app).get('/test');
+        expect(res.status).toBe(200);
+      }
+
+      const blocked = await request(app).get('/test');
+      expect(blocked.status).toBe(429);
+    });
+
+    it('enrichmentRateLimiter allows 20 requests then blocks', async () => {
+      const app = createApp(enrichmentRateLimiter);
+
+      for (let i = 0; i < 20; i++) {
+        const res = await request(app).get('/test');
+        expect(res.status).toBe(200);
+      }
+
+      const blocked = await request(app).get('/test');
+      expect(blocked.status).toBe(429);
+    });
+
+    it('adminRateLimiter allows 10 requests then blocks', async () => {
+      const app = createApp(adminRateLimiter);
+
+      for (let i = 0; i < 10; i++) {
         const res = await request(app).get('/test');
         expect(res.status).toBe(200);
       }

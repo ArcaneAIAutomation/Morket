@@ -55,6 +55,20 @@ export async function findByUserAndWorkspace(
   return result.rows[0] ? toMembership(result.rows[0]) : null;
 }
 
+export async function findFirstForUser(
+  userId: string,
+): Promise<WorkspaceMembership | null> {
+  const result = await query<MembershipRow>(
+    `SELECT ${MEMBERSHIP_COLUMNS} FROM workspace_memberships
+     WHERE user_id = $1
+     ORDER BY invited_at ASC
+     LIMIT 1`,
+    [userId],
+  );
+  return result.rows[0] ? toMembership(result.rows[0]) : null;
+}
+
+
 export async function findAllForWorkspace(
   workspaceId: string,
 ): Promise<WorkspaceMembership[]> {

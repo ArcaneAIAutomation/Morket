@@ -201,7 +201,14 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    """Create and configure the FastAPI application."""
+    """Create and configure the FastAPI application.
+
+    Loads ``ScraperSettings`` eagerly so that a missing ``SCRAPER_SERVICE_KEY``
+    environment variable causes an immediate startup failure rather than
+    silently falling back to a placeholder value.
+    """
+    settings = ScraperSettings()  # type: ignore[call-arg]
+
     app = FastAPI(
         title="Morket Scraper Service",
         version="1.0.0",
@@ -213,10 +220,11 @@ def create_app() -> FastAPI:
 
     # Middleware (order: request_id → auth → error_handler)
     # Note: Starlette middleware is applied in reverse order of add_middleware calls
-    app.add_middleware(ServiceKeyAuthMiddleware, service_key="placeholder")
+    app.add_middleware(ServiceKeyAuthMiddleware, service_key=settings.service_key)
     app.add_middleware(RequestIdMiddleware)
 
     return app
+
 
 
 app = create_app()

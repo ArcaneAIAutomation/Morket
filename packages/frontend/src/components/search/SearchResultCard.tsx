@@ -1,4 +1,5 @@
 import type { SearchResult } from '@/types/search.types';
+import { sanitizeHtml } from '@/utils/sanitize';
 
 const TYPE_ICONS: Record<string, string> = {
   enrichment_record: '🔗',
@@ -25,11 +26,15 @@ export default function SearchResultCard({ result, onClick }: SearchResultCardPr
   function renderHighlight(field: string, fallback: string | null) {
     const fragments = result.highlights?.[field];
     if (fragments && fragments.length > 0) {
+      // Sanitize the highlight fragment, then restore <em> tags used by search highlighting
+      const sanitized = sanitizeHtml(fragments[0])
+        .replace(/&lt;em&gt;/g, '<em>')
+        .replace(/&lt;\/em&gt;/g, '</em>');
       return (
-        <span dangerouslySetInnerHTML={{ __html: fragments[0] }} />
+        <span dangerouslySetInnerHTML={{ __html: sanitized }} />
       );
     }
-    return <span>{fallback}</span>;
+    return <span>{fallback ? sanitizeHtml(fallback) : ''}</span>;
   }
 
   return (
@@ -49,13 +54,13 @@ export default function SearchResultCard({ result, onClick }: SearchResultCardPr
 
             {result.provider_slug && (
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                {result.provider_slug}
+                {sanitizeHtml(result.provider_slug)}
               </span>
             )}
 
             {result.enrichment_status && (
               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[result.enrichment_status] ?? 'bg-gray-100 text-gray-800'}`}>
-                {result.enrichment_status}
+                {sanitizeHtml(result.enrichment_status)}
               </span>
             )}
           </div>

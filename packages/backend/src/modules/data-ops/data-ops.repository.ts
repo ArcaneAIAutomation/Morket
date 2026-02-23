@@ -283,9 +283,17 @@ export async function scanDuplicates(
   workspaceId: string,
   keyFields: string[],
 ): Promise<DuplicateGroup[]> {
+  // Validate field names to prevent SQL injection — only allow alphanumeric, underscore, hyphen
+  const SAFE_FIELD_NAME = /^[a-zA-Z0-9_-]+$/;
+  for (const f of keyFields) {
+    if (!SAFE_FIELD_NAME.test(f)) {
+      throw new Error(`Invalid field name: ${f}`);
+    }
+  }
+
   // Build a composite key from input_data fields
   const keyExpr = keyFields
-    .map((f) => `COALESCE(input_data->>'${f.replace(/'/g, "''")}', '')`)
+    .map((f) => `COALESCE(input_data->>'${f}', '')`)
     .join(` || '|' || `);
 
   const result = await query<{ key_value: string; record_ids: string[]; cnt: string }>(

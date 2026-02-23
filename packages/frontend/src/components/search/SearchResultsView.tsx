@@ -5,6 +5,7 @@ import SearchResultCard from './SearchResultCard';
 import FacetSidebar from './FacetSidebar';
 import SearchPagination from './SearchPagination';
 import type { SearchResult, SearchSort } from '@/types/search.types';
+import { sanitizeHtml } from '@/utils/sanitize';
 
 const SORT_OPTIONS: { label: string; value: SearchSort }[] = [
   { label: 'Relevance', value: { field: '_score', direction: 'desc' } },
@@ -137,7 +138,7 @@ export default function SearchResultsView() {
         {!search.loading && search.results.length === 0 && search.query && (
           <div className="text-center py-12">
             <p className="text-gray-500 text-sm">
-              No results found for "{search.query}"
+              No results found for &quot;{sanitizeHtml(search.query)}&quot;
             </p>
             <p className="text-gray-400 text-xs mt-2">
               Try broadening your search or removing some filters

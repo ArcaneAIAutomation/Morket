@@ -39,7 +39,7 @@ src/
 ├── hooks/         # Custom React hooks
 ├── stores/        # Zustand stores (one per domain)
 ├── types/         # TypeScript interfaces (api, grid, enrichment, search, analytics)
-├── utils/         # Formatters, permissions
+├── utils/         # Formatters, permissions, sanitize, validateParams
 └── workers/       # Web Workers (CSV parse/generate)
 ```
 
@@ -127,6 +127,15 @@ src/
 - `OfflineBanner` component shows warning when offline
 - Auto-save skips when offline
 
+#### Security
+- `sanitize.ts` — `sanitizeHtml()` escapes HTML entities in rendered content (cell values, search results, workspace names, enrichment data)
+- `validateParams.ts` — `isValidUUID()`, `isValidSlug()`, `validateRouteParams()` for deep link parameter validation
+- `ValidatedWorkspaceRoute` component wraps workspace routes with parameter validation, redirects to 404 on invalid params
+- `Referrer-Policy: strict-origin-when-cross-origin` header set on all Axios requests
+- Auth tokens stored in Zustand memory only (not localStorage/sessionStorage/cookies)
+- Token refresh failure clears all auth state and redirects to `/login`
+- Unauthorized role UI elements removed from DOM (not just CSS hidden)
+
 ## Testing
 
 ### Unit Tests
@@ -138,7 +147,7 @@ src/
 ### Property-Based Tests
 - Located in `tests/property/`
 - Use `fast-check` for property generation
-- 7 property test suites:
+- 8 property test suites:
   - `api-envelope.property.test.ts` — envelope unwrapping invariants
   - `csv-roundtrip.property.test.ts` — CSV parse → generate roundtrip
   - `enrichment-cost.property.test.ts` — credit cost calculation
@@ -146,6 +155,7 @@ src/
   - `permissions.property.test.ts` — role hierarchy and permission checks
   - `sort-filter.property.test.ts` — sort/filter model consistency
   - `toast-behavior.property.test.ts` — toast queue max size and auto-dismiss
+  - `security.property.test.ts` — HTML sanitization encoding, deep link parameter validation (2 property suites)
 
 ## Shared Components (`src/components/shared/`)
 - `ErrorBoundary` — catches React render errors, shows fallback UI

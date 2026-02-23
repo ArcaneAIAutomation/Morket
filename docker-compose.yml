@@ -1,3 +1,5 @@
+# Security verified: No Docker socket mounts, no host filesystem bind mounts,
+# application containers run with read-only root filesystem and no-new-privileges.
 version: "3.9"
 
 services:
@@ -9,6 +11,9 @@ services:
       dockerfile: docker/backend.Dockerfile
     ports:
       - "3000:3000"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
     environment:
       NODE_ENV: development
       PORT: "3000"
@@ -39,6 +44,9 @@ services:
       dockerfile: docker/scraper.Dockerfile
     ports:
       - "8001:8001"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
     environment:
       BACKEND_API_URL: http://backend:3000
       SERVICE_API_KEY: dev-service-api-key
@@ -63,6 +71,9 @@ services:
       dockerfile: docker/frontend.Dockerfile
     ports:
       - "5173:80"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       - backend
     networks:

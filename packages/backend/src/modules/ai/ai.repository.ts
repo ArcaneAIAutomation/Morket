@@ -107,9 +107,17 @@ export async function fetchRecordsForDuplicateDetection(
   fields: string[],
   limit: number,
 ): Promise<Array<{ id: string; values: Record<string, string> }>> {
+  // Validate field names to prevent SQL injection — only allow alphanumeric, underscore, hyphen
+  const SAFE_FIELD_NAME = /^[a-zA-Z0-9_-]+$/;
+  for (const f of fields) {
+    if (!SAFE_FIELD_NAME.test(f)) {
+      throw new Error(`Invalid field name: ${f}`);
+    }
+  }
+
   // Build JSON extraction for requested fields from input_data
   const fieldExpressions = fields
-    .map((f) => `'${f.replace(/'/g, "''")}', COALESCE(input_data->>'${f.replace(/'/g, "''")}', '')`)
+    .map((f) => `'${f}', COALESCE(input_data->>'${f}', '')`)
     .join(', ');
 
   const result = await query<{ id: string; field_values: Record<string, string> }>(

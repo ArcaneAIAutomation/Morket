@@ -3,9 +3,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import ToastContainer from '@/components/shared/Toast';
 import OfflineBanner from '@/components/shared/OfflineBanner';
+import NotFoundPage from '@/components/shared/NotFoundPage';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import AuthGuard from '@/components/layout/AuthGuard';
+import ValidatedWorkspaceRoute from '@/components/layout/ValidatedWorkspaceRoute';
 import AppShell from '@/components/layout/AppShell';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
@@ -32,86 +34,91 @@ function AppContent() {
 
         {/* Protected routes */}
         <Route element={<AuthGuard />}>
-          <Route path="/workspaces/:workspaceId/*" element={<AppShell />}>
-            <Route index element={<Navigate to="spreadsheet" replace />} />
-            <Route
-              path="spreadsheet"
-              element={
-                <Suspense fallback={<LoadingFallback />}>
-                  <SpreadsheetView />
-                </Suspense>
-              }
-            />
-            <Route
-              path="jobs"
-              element={
-                <Suspense fallback={<LoadingFallback />}>
-                  <JobMonitorView />
-                </Suspense>
-              }
-            />
-            <Route
-              path="analytics"
-              element={
-                <Suspense fallback={<LoadingFallback />}>
-                  <AnalyticsDashboard />
-                </Suspense>
-              }
-            />
-            <Route
-              path="search"
-              element={
-                <Suspense fallback={<LoadingFallback />}>
-                  <SearchResultsView />
-                </Suspense>
-              }
-            />
-            <Route
-              path="settings"
-              element={
-                <Suspense fallback={<LoadingFallback />}>
-                  <SettingsLayout />
-                </Suspense>
-              }
-            >
-              <Route index element={<Navigate to="workspace" replace />} />
+          <Route path="/workspaces/:workspaceId/*" element={<ValidatedWorkspaceRoute />}>
+            <Route element={<AppShell />}>
+              <Route index element={<Navigate to="spreadsheet" replace />} />
               <Route
-                path="workspace"
+                path="spreadsheet"
                 element={
                   <Suspense fallback={<LoadingFallback />}>
-                    <WorkspaceSettings />
+                    <SpreadsheetView />
                   </Suspense>
                 }
               />
               <Route
-                path="members"
+                path="jobs"
                 element={
                   <Suspense fallback={<LoadingFallback />}>
-                    <MemberSettings />
+                    <JobMonitorView />
                   </Suspense>
                 }
               />
               <Route
-                path="credentials"
+                path="analytics"
                 element={
                   <Suspense fallback={<LoadingFallback />}>
-                    <CredentialSettings />
+                    <AnalyticsDashboard />
                   </Suspense>
                 }
               />
               <Route
-                path="billing"
+                path="search"
                 element={
                   <Suspense fallback={<LoadingFallback />}>
-                    <BillingSettings />
+                    <SearchResultsView />
                   </Suspense>
                 }
               />
+              <Route
+                path="settings"
+                element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <SettingsLayout />
+                  </Suspense>
+                }
+              >
+                <Route index element={<Navigate to="workspace" replace />} />
+                <Route
+                  path="workspace"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <WorkspaceSettings />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="members"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <MemberSettings />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="credentials"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <CredentialSettings />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="billing"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <BillingSettings />
+                    </Suspense>
+                  }
+                />
+              </Route>
             </Route>
           </Route>
           {/* Redirect bare /workspaces to AuthGuard which handles workspace selection */}
           <Route path="/workspaces" element={<WorkspaceRedirect />} />
         </Route>
+
+        {/* 404 page for invalid deep link parameters */}
+        <Route path="/404" element={<NotFoundPage />} />
 
         {/* Default redirect */}
         <Route path="*" element={<Navigate to="/login" replace />} />

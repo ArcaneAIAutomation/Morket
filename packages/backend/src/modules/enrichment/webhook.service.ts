@@ -7,7 +7,8 @@
  */
 
 import crypto from 'crypto';
-import { NotFoundError } from '../../shared/errors';
+import { NotFoundError, ValidationError } from '../../shared/errors';
+import { validateUrlSafety } from '../../shared/sanitize';
 import { logger } from '../../shared/logger';
 import * as webhookRepo from './webhook.repository';
 
@@ -31,6 +32,7 @@ export interface WebhookPayload {
 
 const RETRY_DELAYS_MS = [5_000, 10_000, 20_000];
 const DELIVERY_TIMEOUT_MS = 10_000;
+export const MAX_WEBHOOK_AGE_SECONDS = 300; // 5 minutes
 
 // === Helpers ===
 
@@ -42,6 +44,7 @@ async function deliverToSubscription(
   callbackUrl: string,
   body: string,
   signature: string,
+  timestamp: string,
 ): Promise<void> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DELIVERY_TIMEOUT_MS);
@@ -52,6 +55,7 @@ async function deliverToSubscription(
       headers: {
         'Content-Type': 'application/json',
         'X-Webhook-Signature': `sha256=${signature}`,
+        'X-Webhook-Timestamp': timestamp,
       },
       body,
       signal: controller.signal,
@@ -70,6 +74,7 @@ async function deliverToSubscription(
 /**
  * Create a webhook subscription for a workspace.
  * Generates a 64-char hex secret key for HMAC signature verification.
+ * Validates that the callback URL uses HTTPS and does not resolve to private IPs.
  */
 export async function createSubscription(
   workspaceId: string,
@@ -77,6 +82,17 @@ export async function createSubscription(
   callbackUrl: string,
   eventTypes: string[],
 ) {
+  // Validate HTTPS-only
+  if (!callbackUrl.startsWith('https://')) {
+    throw new ValidationError('Webhook callback URL must use HTTPS');
+  }
+
+  // Validate URL does not resolve to private/internal IP ranges (SSRF protection)
+  const isSafe = await validateUrlSafety(callbackUrl);
+  if (!isSafe) {
+    throw new ValidationError('Webhook callback URL resolves to a private or reserved IP range');
+  }
+
   const secretKey = crypto.randomBytes(32).toString('hex');
 
   return webhookRepo.createSubscription({
@@ -135,14 +151,16 @@ export async function deliverEvent(workspaceId: string, payload: WebhookPayload)
   const body = JSON.stringify(payload);
 
   const deliveries = subscriptions.map(async (subscription) => {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const signaturePayload = `${timestamp}.${body}`;
     const signature = crypto
       .createHmac('sha256', subscription.secretKey)
-      .update(body)
+      .update(signaturePayload)
       .digest('hex');
 
     for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
       try {
-        await deliverToSubscription(subscription.callbackUrl, body, signature);
+        await deliverToSubscription(subscription.callbackUrl, body, signature, timestamp);
         return; // success — stop retrying
       } catch (err) {
         const isLastAttempt = attempt === RETRY_DELAYS_MS.length;
@@ -172,4 +190,50 @@ export async function deliverEvent(workspaceId: string, payload: WebhookPayload)
   });
 
   await Promise.all(deliveries);
+}
+
+
+/**
+ * Verify a webhook signature with replay prevention.
+ *
+ * - Rejects if the timestamp is older than MAX_WEBHOOK_AGE_SECONDS (5 minutes)
+ * - Computes HMAC over `${timestamp}.${body}` and compares using timing-safe equality
+ *
+ * @returns `{ valid: true }` on success, `{ valid: false, reason: string }` on failure
+ */
+export function verifyWebhookSignature(
+  body: string,
+  signature: string,
+  timestamp: string,
+  secretKey: string,
+): { valid: boolean; reason?: string } {
+  const now = Math.floor(Date.now() / 1000);
+  const ts = parseInt(timestamp, 10);
+
+  if (isNaN(ts)) {
+    return { valid: false, reason: 'Invalid timestamp' };
+  }
+
+  if (now - ts > MAX_WEBHOOK_AGE_SECONDS) {
+    return { valid: false, reason: 'Webhook timestamp too old' };
+  }
+
+  const signaturePayload = `${timestamp}.${body}`;
+  const expected = crypto
+    .createHmac('sha256', secretKey)
+    .update(signaturePayload)
+    .digest('hex');
+
+  const sigBuffer = Buffer.from(signature, 'utf8');
+  const expectedBuffer = Buffer.from(expected, 'utf8');
+
+  if (sigBuffer.length !== expectedBuffer.length) {
+    return { valid: false, reason: 'Signature mismatch' };
+  }
+
+  if (!crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
+    return { valid: false, reason: 'Signature mismatch' };
+  }
+
+  return { valid: true };
 }

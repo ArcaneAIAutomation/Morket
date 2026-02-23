@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useWorkspaceStore } from '@/stores/workspace.store';
 import { useUIStore } from '@/stores/ui.store';
 import SearchBar from '@/components/search/SearchBar';
+import { sanitizeHtml } from '@/utils/sanitize';
 
 export default function Header() {
   const navigate = useNavigate();
@@ -50,7 +51,7 @@ export default function Header() {
             onClick={() => setWsDropdownOpen(!wsDropdownOpen)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-gray-100 text-sm font-medium text-gray-700"
           >
-            {activeWorkspace?.name ?? 'Select workspace'}
+            {activeWorkspace?.name ? sanitizeHtml(activeWorkspace.name) : 'Select workspace'}
             <span className="text-xs text-gray-400">▼</span>
           </button>
 
@@ -64,7 +65,7 @@ export default function Header() {
                     ws.id === workspaceId ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
                   }`}
                 >
-                  {ws.name}
+                  {sanitizeHtml(ws.name)}
                 </button>
               ))}
             </div>

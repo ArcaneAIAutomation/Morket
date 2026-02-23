@@ -18,7 +18,7 @@ const JWT_SECRET = 'test-secret-that-is-at-least-32-chars-long';
 const ENCRYPTION_MASTER_KEY = 'a'.repeat(64);
 
 const APP_CONFIG = {
-  corsOrigin: 'http://localhost:5173',
+  corsOrigins: ['http://localhost:5173'],
   jwtSecret: JWT_SECRET,
   jwtAccessExpiry: '15m',
   jwtRefreshExpiry: '7d',

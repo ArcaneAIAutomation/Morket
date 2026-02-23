@@ -8,7 +8,7 @@ const VALID_ENV = {
   JWT_ACCESS_EXPIRY: '15m',
   JWT_REFRESH_EXPIRY: '7d',
   ENCRYPTION_MASTER_KEY: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
-  CORS_ORIGIN: 'http://localhost:5173',
+  CORS_ORIGINS: 'http://localhost:5173',
   NODE_ENV: 'development',
 };
 
@@ -40,7 +40,7 @@ describe('env config', () => {
     expect(env.JWT_ACCESS_EXPIRY).toBe('15m');
     expect(env.JWT_REFRESH_EXPIRY).toBe('7d');
     expect(env.ENCRYPTION_MASTER_KEY).toBe(VALID_ENV.ENCRYPTION_MASTER_KEY);
-    expect(env.CORS_ORIGIN).toBe('http://localhost:5173');
+    expect(env.CORS_ORIGINS).toEqual(['http://localhost:5173']);
     expect(env.NODE_ENV).toBe('development');
   });
 
@@ -140,5 +140,61 @@ describe('env config', () => {
     await import('./env');
 
     expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('should terminate when JWT_ACCESS_EXPIRY exceeds 15 minutes', async () => {
+    Object.assign(process.env, { ...VALID_ENV, JWT_ACCESS_EXPIRY: '16m' });
+    await import('./env');
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('should terminate when JWT_ACCESS_EXPIRY has invalid format', async () => {
+    Object.assign(process.env, { ...VALID_ENV, JWT_ACCESS_EXPIRY: 'forever' });
+    await import('./env');
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('should accept JWT_ACCESS_EXPIRY at exactly 15 minutes', async () => {
+    Object.assign(process.env, { ...VALID_ENV, JWT_ACCESS_EXPIRY: '15m' });
+    const { env } = await import('./env');
+
+    expect(env.JWT_ACCESS_EXPIRY).toBe('15m');
+  });
+
+  it('should accept JWT_ACCESS_EXPIRY in seconds within limit', async () => {
+    Object.assign(process.env, { ...VALID_ENV, JWT_ACCESS_EXPIRY: '900s' });
+    const { env } = await import('./env');
+
+    expect(env.JWT_ACCESS_EXPIRY).toBe('900s');
+  });
+
+  it('should terminate when JWT_REFRESH_EXPIRY exceeds 7 days', async () => {
+    Object.assign(process.env, { ...VALID_ENV, JWT_REFRESH_EXPIRY: '8d' });
+    await import('./env');
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('should terminate when JWT_REFRESH_EXPIRY has invalid format', async () => {
+    Object.assign(process.env, { ...VALID_ENV, JWT_REFRESH_EXPIRY: '1w' });
+    await import('./env');
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('should accept JWT_REFRESH_EXPIRY at exactly 7 days', async () => {
+    Object.assign(process.env, { ...VALID_ENV, JWT_REFRESH_EXPIRY: '7d' });
+    const { env } = await import('./env');
+
+    expect(env.JWT_REFRESH_EXPIRY).toBe('7d');
+  });
+
+  it('should accept JWT_REFRESH_EXPIRY in hours within limit', async () => {
+    Object.assign(process.env, { ...VALID_ENV, JWT_REFRESH_EXPIRY: '168h' });
+    const { env } = await import('./env');
+
+    expect(env.JWT_REFRESH_EXPIRY).toBe('168h');
   });
 });

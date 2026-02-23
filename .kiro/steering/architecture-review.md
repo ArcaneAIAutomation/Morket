@@ -43,6 +43,22 @@ When reviewing code or making architectural decisions, evaluate against these cr
 - Scraper webhook callbacks must be signed with HMAC-SHA256 for authenticity verification
 - Stripe webhooks must receive raw body (before JSON parser) for signature verification
 - Workspace invitations use expiring tokens (7-day TTL) with public accept/decline endpoints
+- JWT tokens must include `iss`, `aud`, `jti`, `role`, `workspaceId` claims; `jti` checked against Redis revocation list
+- Account lockout after 5 failed login attempts within 15 minutes (in-memory Map-based)
+- Login errors must be generic ("Invalid credentials") for both non-existent email and wrong password
+- Refresh token replay detection: if token not found in DB, revoke all tokens for that user
+- Max 10 active refresh tokens per user; oldest revoked when exceeded
+- Token expiry enforced via Zod: max 15min access, max 7d refresh
+- Input sanitization: HTML entity encoding for rendered content, CSV formula injection detection, SSRF prevention via DNS resolution + private IP rejection
+- AI-generated filters validated against field name whitelist and operator set
+- Security event logging with trace_id/span_id correlation for auth failures, authz failures, rate limit hits, webhook failures
+- Sensitive headers (Authorization, X-Service-Key) and fields (password, secret, token, apiKey) redacted in logs
+- Credential CRUD operations produce audit log entries (user ID, workspace ID, credential ID — never the value)
+- Webhook HMAC includes timestamp for replay prevention (5-minute window)
+- Health/readiness/metrics endpoints restricted via X-Monitoring-Key in production
+- CORS uses explicit origin allowlist, not wildcard
+- Security headers middleware: HSTS, X-Content-Type-Options: nosniff, X-Frame-Options: DENY, Permissions-Policy, X-Powered-By disabled
+- Error responses in production strip stack traces, file paths, and raw DB errors
 
 ## Performance
 - Database queries must use connection pooling (pg-pool)

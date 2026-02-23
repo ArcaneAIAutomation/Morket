@@ -14,14 +14,21 @@ vi.mock('../../shared/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));
 
+vi.mock('../../shared/sanitize', () => ({
+  validateUrlSafety: vi.fn(),
+}));
+
 import * as webhookRepo from './webhook.repository';
+import { validateUrlSafety } from '../../shared/sanitize';
 import {
   createSubscription,
   deleteSubscription,
   deliverEvent,
   listSubscriptions,
+  verifyWebhookSignature,
+  MAX_WEBHOOK_AGE_SECONDS,
 } from './webhook.service';
-import { NotFoundError } from '../../shared/errors';
+import { NotFoundError, ValidationError } from '../../shared/errors';
 import type { WebhookSubscription } from './webhook.repository';
 import type { WebhookPayload } from './webhook.service';
 
@@ -81,6 +88,7 @@ describe('webhook.service', () => {
     it('generates a 64-char hex secret key and calls repo', async () => {
       const sub = makeSubscription();
       vi.mocked(webhookRepo.createSubscription).mockResolvedValue(sub);
+      vi.mocked(validateUrlSafety).mockResolvedValue(true);
 
       await createSubscription('ws-1', 'user-1', 'https://example.com/hook', ['job.completed']);
 
@@ -92,6 +100,20 @@ describe('webhook.service', () => {
       expect(callArg.eventTypes).toEqual(['job.completed']);
       // Secret key: 32 random bytes → 64 hex chars
       expect(callArg.secretKey).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it('rejects non-HTTPS callback URLs', async () => {
+      await expect(
+        createSubscription('ws-1', 'user-1', 'http://example.com/hook', ['job.completed']),
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it('rejects callback URLs that resolve to private IPs', async () => {
+      vi.mocked(validateUrlSafety).mockResolvedValue(false);
+
+      await expect(
+        createSubscription('ws-1', 'user-1', 'https://internal.local/hook', ['job.completed']),
+      ).rejects.toThrow(ValidationError);
     });
   });
 
@@ -117,7 +139,7 @@ describe('webhook.service', () => {
   // deliverEvent
   // ---------------------------------------------------------------
   describe('deliverEvent', () => {
-    it('computes correct HMAC-SHA256 signature and sends POST with X-Webhook-Signature header', async () => {
+    it('computes correct HMAC-SHA256 signature with timestamp and sends POST with signature and timestamp headers', async () => {
       const sub = makeSubscription();
       const payload = makePayload();
       vi.mocked(webhookRepo.getSubscriptionsByEventType).mockResolvedValue([sub]);
@@ -133,11 +155,17 @@ describe('webhook.service', () => {
       expect(opts.method).toBe('POST');
       expect(opts.headers['Content-Type']).toBe('application/json');
 
-      // Verify HMAC signature
+      // Verify timestamp header is present and numeric
+      const timestamp = opts.headers['X-Webhook-Timestamp'];
+      expect(timestamp).toBeDefined();
+      expect(Number(timestamp)).toBeGreaterThan(0);
+
+      // Verify HMAC signature includes timestamp
       const body = JSON.stringify(payload);
+      const signaturePayload = `${timestamp}.${body}`;
       const expectedSignature = crypto
         .createHmac('sha256', sub.secretKey)
-        .update(body)
+        .update(signaturePayload)
         .digest('hex');
       expect(opts.headers['X-Webhook-Signature']).toBe(`sha256=${expectedSignature}`);
       expect(opts.body).toBe(body);
@@ -203,6 +231,54 @@ describe('webhook.service', () => {
       await deliverEvent('ws-1', makePayload());
 
       expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  // ---------------------------------------------------------------
+  // verifyWebhookSignature
+  // ---------------------------------------------------------------
+  describe('verifyWebhookSignature', () => {
+    const secretKey = 'a'.repeat(64);
+
+    it('returns valid for a correctly signed recent webhook', () => {
+      const body = JSON.stringify({ event: 'test' });
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const signature = crypto
+        .createHmac('sha256', secretKey)
+        .update(`${timestamp}.${body}`)
+        .digest('hex');
+
+      const result = verifyWebhookSignature(body, signature, timestamp, secretKey);
+      expect(result).toEqual({ valid: true });
+    });
+
+    it('rejects webhooks older than 5 minutes', () => {
+      const body = JSON.stringify({ event: 'test' });
+      const oldTimestamp = (Math.floor(Date.now() / 1000) - MAX_WEBHOOK_AGE_SECONDS - 1).toString();
+      const signature = crypto
+        .createHmac('sha256', secretKey)
+        .update(`${oldTimestamp}.${body}`)
+        .digest('hex');
+
+      const result = verifyWebhookSignature(body, signature, oldTimestamp, secretKey);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('Webhook timestamp too old');
+    });
+
+    it('rejects invalid signatures', () => {
+      const body = JSON.stringify({ event: 'test' });
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+
+      const result = verifyWebhookSignature(body, 'invalidsignature'.repeat(4), timestamp, secretKey);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('Signature mismatch');
+    });
+
+    it('rejects non-numeric timestamps', () => {
+      const body = JSON.stringify({ event: 'test' });
+      const result = verifyWebhookSignature(body, 'sig', 'not-a-number', secretKey);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('Invalid timestamp');
     });
   });
 });

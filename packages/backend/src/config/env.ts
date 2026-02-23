@@ -4,6 +4,38 @@ import { z } from 'zod';
 // Load .env file before validation
 dotenv.config();
 
+/**
+ * Parses a duration string (e.g. "15m", "7d") into seconds.
+ * Supported units: s (seconds), m (minutes), h (hours), d (days).
+ * Returns null if the format is invalid.
+ */
+export function parseExpiryToSeconds(expiry: string): number | null {
+  const match = expiry.match(/^(\d+)([smhd])$/);
+  if (!match) return null;
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+  const multipliers: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };
+  return value * multipliers[unit];
+}
+
+const MAX_ACCESS_EXPIRY_SECONDS = 900;   // 15 minutes
+const MAX_REFRESH_EXPIRY_SECONDS = 604800; // 7 days
+
+const jwtExpirySchema = (maxSeconds: number, label: string) =>
+  z
+    .string()
+    .refine(
+      (val) => parseExpiryToSeconds(val) !== null,
+      { message: `${label} must be in format <number><unit> where unit is s, m, h, or d (e.g. "15m", "7d")` },
+    )
+    .refine(
+      (val) => {
+        const seconds = parseExpiryToSeconds(val);
+        return seconds !== null && seconds <= maxSeconds;
+      },
+      { message: `${label} must not exceed ${maxSeconds} seconds` },
+    );
+
 const envSchema = z.object({
   PORT: z
     .string()
@@ -20,21 +52,20 @@ const envSchema = z.object({
     .string({ required_error: 'JWT_SECRET is required' })
     .min(32, 'JWT_SECRET must be at least 32 characters'),
 
-  JWT_ACCESS_EXPIRY: z
-    .string({ required_error: 'JWT_ACCESS_EXPIRY is required' })
+  JWT_ACCESS_EXPIRY: jwtExpirySchema(MAX_ACCESS_EXPIRY_SECONDS, 'JWT_ACCESS_EXPIRY')
     .default('15m'),
 
-  JWT_REFRESH_EXPIRY: z
-    .string({ required_error: 'JWT_REFRESH_EXPIRY is required' })
+  JWT_REFRESH_EXPIRY: jwtExpirySchema(MAX_REFRESH_EXPIRY_SECONDS, 'JWT_REFRESH_EXPIRY')
     .default('7d'),
 
   ENCRYPTION_MASTER_KEY: z
     .string({ required_error: 'ENCRYPTION_MASTER_KEY is required' })
     .regex(/^[0-9a-fA-F]{64}$/, 'ENCRYPTION_MASTER_KEY must be exactly 64 hex characters (32 bytes)'),
 
-  CORS_ORIGIN: z
-    .string({ required_error: 'CORS_ORIGIN is required' })
-    .default('http://localhost:5173'),
+  CORS_ORIGINS: z
+    .string({ required_error: 'CORS_ORIGINS is required' })
+    .default('http://localhost:5173')
+    .transform((val) => val.split(',').map((s) => s.trim()).filter(Boolean)),
 
   NODE_ENV: z
     .enum(['development', 'production', 'test'])

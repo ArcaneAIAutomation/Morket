@@ -162,11 +162,29 @@ resource "aws_security_group" "ecs" {
     security_groups = [aws_security_group.alb.id]
   }
 
-  # ECS-to-ECS communication (backend ↔ scraper, backend ↔ temporal)
+  # ECS-to-ECS communication (backend ↔ scraper)
   ingress {
-    description = "ECS internal"
-    from_port   = 0
-    to_port     = 65535
+    description = "Backend from ECS"
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    self        = true
+  }
+
+  # ECS-to-ECS communication (backend ↔ scraper)
+  ingress {
+    description = "Scraper from ECS"
+    from_port   = 8001
+    to_port     = 8001
+    protocol    = "tcp"
+    self        = true
+  }
+
+  # ECS-to-ECS communication (backend ↔ temporal)
+  ingress {
+    description = "Temporal gRPC from ECS"
+    from_port   = 7233
+    to_port     = 7233
     protocol    = "tcp"
     self        = true
   }
@@ -344,9 +362,8 @@ resource "aws_security_group" "temporal" {
 # --- VPC Flow Logs ---
 
 resource "aws_flow_log" "main" {
-  count                = var.enable_flow_logs ? 1 : 0
-  iam_role_arn         = aws_iam_role.flow_log[0].arn
-  log_destination      = aws_cloudwatch_log_group.flow_log[0].arn
+  iam_role_arn         = aws_iam_role.flow_log.arn
+  log_destination      = aws_cloudwatch_log_group.flow_log.arn
   traffic_type         = "ALL"
   vpc_id               = aws_vpc.main.id
   max_aggregation_interval = 60
@@ -355,15 +372,13 @@ resource "aws_flow_log" "main" {
 }
 
 resource "aws_cloudwatch_log_group" "flow_log" {
-  count             = var.enable_flow_logs ? 1 : 0
   name              = "/aws/vpc/flow-log/${var.project}-${var.environment}"
   retention_in_days = 30
   tags              = local.common_tags
 }
 
 resource "aws_iam_role" "flow_log" {
-  count = var.enable_flow_logs ? 1 : 0
-  name  = "${var.project}-${var.environment}-flow-log-role"
+  name = "${var.project}-${var.environment}-flow-log-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -378,9 +393,8 @@ resource "aws_iam_role" "flow_log" {
 }
 
 resource "aws_iam_role_policy" "flow_log" {
-  count = var.enable_flow_logs ? 1 : 0
-  name  = "flow-log-cloudwatch"
-  role  = aws_iam_role.flow_log[0].id
+  name = "flow-log-cloudwatch"
+  role = aws_iam_role.flow_log.id
 
   policy = jsonencode({
     Version = "2012-10-17"

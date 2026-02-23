@@ -76,6 +76,10 @@ Some modules have additional files:
 - `OTEL_ENABLED=false` disables tracing entirely; `initTracing()` must be called before all other imports in server.ts
 - Health/readiness/metrics probes excluded from tracing
 - GET /api/v1/metrics and GET /api/v1/readiness endpoints in app.ts
+- Security event logging: `logAuthFailure()`, `logAuthzFailure()`, `logRateLimitHit()`, `logWebhookFailure()` in `src/observability/logger.ts`
+- Header redaction for `Authorization`, `X-Service-Key` in request logs
+- Field redaction for `password`, `secret`, `token`, `apiKey` in request body logs
+- Credential CRUD audit logging with user ID, workspace ID, credential ID (never the credential value)
 
 ## Testing
 
@@ -84,6 +88,7 @@ Some modules have additional files:
 - Integration tests: `tests/integration/`, use supertest against `createApp()` with mocked repos
 - Use `vi.resetAllMocks()` (not `vi.clearAllMocks()`) inside property test iterations to avoid stale mock queues
 - Rate limiter state: call `_resetRateLimiterState()` in `beforeEach` for tests that touch HTTP endpoints
+- Security property tests: `tests/property/security.property.test.ts` — 26 correctness properties covering auth, RBAC, rate limiting, encryption, sanitization, logging, webhooks
 
 ## Existing Modules
 
@@ -112,7 +117,9 @@ Some modules have additional files:
 | Observability | `src/observability/` | Structured logger + metrics + OpenTelemetry tracing |
 | ClickHouse | `src/clickhouse/` | ClickHouse client + health check |
 | Config | `src/config/env.ts` | Zod-validated environment config |
-| Middleware | `src/middleware/` | Auth, RBAC, validation, rate limiting, logging, errors, requestId, tracing |
+| Middleware | `src/middleware/` | Auth, RBAC, validation, rate limiting, logging, errors, requestId, tracing, securityHeaders |
+| Sanitization | `src/shared/sanitize.ts` | HTML encoding, formula injection detection, URL safety validation |
+| Security Headers | `src/middleware/securityHeaders.ts` | HSTS, X-Content-Type-Options, X-Frame-Options, Permissions-Policy |
 | Shared | `src/shared/` | DB pool, encryption, errors, envelope, types |
 
 ## Migrations

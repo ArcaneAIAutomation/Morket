@@ -89,9 +89,9 @@ The backend follows a layered architecture: **Routes → Controllers → Service
 | Frontend | React 18+, Zustand, AG Grid, Tailwind CSS |
 | Infrastructure | Docker, Terraform, GitHub Actions, AWS (ECS, Aurora, ElastiCache, OpenSearch, S3, CloudFront) |
 
-## Current Status: Module 8 — Product Enhancements & Growth Features ✅
+## Current Status: Security Audit ✅
 
-All 8 modules are complete. Application code (Modules 1–6) covers the full backend API, enrichment orchestration, scraping microservices, spreadsheet UI, OLAP analytics, and search layer. Module 7 provides Docker containerization, Terraform IaC for AWS, and GitHub Actions CI/CD. Module 8 adds Stripe billing, CRM integrations, advanced data operations, workflow builder, AI/ML intelligence, team collaboration, Redis caching, and observability.
+All 8 modules are complete, plus a comprehensive security audit. Application code (Modules 1–6) covers the full backend API, enrichment orchestration, scraping microservices, spreadsheet UI, OLAP analytics, and search layer. Module 7 provides Docker containerization, Terraform IaC for AWS, and GitHub Actions CI/CD. Module 8 adds Stripe billing, CRM integrations, advanced data operations, workflow builder, AI/ML intelligence, team collaboration, Redis caching, and observability. The security audit hardens all layers with 26 property-based correctness tests.
 
 ### What's built
 
@@ -553,6 +553,26 @@ Eight sub-modules covering billing, integrations, data operations, workflow buil
 - **8.6 Team & Collaboration** — Extended roles (viewer, billing_admin), activity feed, immutable audit log with CSV export, workspace invitations with 7-day expiry tokens
 - **8.7 Performance & Scale** — Redis caching layer (ioredis) with graceful degradation, domain-specific cache helpers (workspace config 5min, user session 15min, provider health 1min), Redis health check
 - **8.8 Observability & Operations** — Structured JSON logger with configurable levels, in-memory request/error metrics, GET /api/v1/metrics and GET /api/v1/readiness endpoints, OpenTelemetry distributed tracing with auto-instrumentation (HTTP, Express, PostgreSQL, Redis), OTLP exporter, log-trace correlation (trace_id/span_id in log entries)
+
+---
+
+### ✅ Security Audit
+> *Status: Complete*
+
+Comprehensive security hardening across all layers of the platform. 13 requirement areas, 26 correctness properties validated by property-based tests.
+
+- **Authentication hardening** — JWT claim validation (iss/aud/jti), account lockout (5 attempts/15min), generic login errors, refresh token replay detection, max 10 tokens per user, token expiry Zod validation
+- **Authorization hardening** — Workspace ID cross-check on URL params, object-level ownership middleware, billing_admin role restriction, role hierarchy enforcement
+- **Input validation** — HTML entity encoding, CSV formula injection detection, SSRF prevention (DNS resolution + private IP rejection), AI filter whitelist validation, Zod on all routes
+- **API hardening** — Route-specific rate limits with Retry-After headers, security headers middleware (HSTS, CSP, X-Frame-Options DENY), CORS origin allowlist, body size limits (1MB JSON, 10MB uploads), production error sanitization
+- **Encryption** — Master key length validation, workspace ID hash as HKDF salt, write-verify pattern
+- **Security logging** — Header/field redaction, security event functions with trace_id/span_id correlation, credential audit logging
+- **Webhook security** — Timestamp replay prevention (5-min window), HTTPS-only URLs, SSRF protection
+- **Scraper hardening** — Constant-time key comparison, URL scheme + private IP validation, no hardcoded secrets
+- **Frontend security** — Content sanitization, deep link parameter validation, Referrer-Policy, tokens in memory only
+- **Infrastructure** — Nginx HTTPS + HSTS + CSP, pinned Docker images with labels, Terraform VPC flow logs + SG restrictions + encryption at rest/transit, secret rotation
+- **CI/CD** — npm audit, pip-audit, Trivy container scanning, gitleaks secret scanning, SHA-pinned GitHub Actions, pinned dependency versions
+- **26 property-based tests** across backend (fast-check), frontend (fast-check), and scraper (hypothesis) with 100+ iterations each
 
 ---
 

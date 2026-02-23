@@ -66,3 +66,33 @@ export async function revokeAllForUser(userId: string): Promise<void> {
     [userId],
   );
 }
+
+export async function countActiveForUser(userId: string): Promise<number> {
+  const result = await query<{ count: string }>(
+    `SELECT COUNT(*) AS count FROM refresh_tokens
+     WHERE user_id = $1 AND revoked_at IS NULL AND expires_at > NOW()`,
+    [userId],
+  );
+  return parseInt(result.rows[0].count, 10);
+}
+
+export async function findOldestActiveForUser(userId: string): Promise<{ id: string } | null> {
+  const result = await query<{ id: string }>(
+    `SELECT id FROM refresh_tokens
+     WHERE user_id = $1 AND revoked_at IS NULL AND expires_at > NOW()
+     ORDER BY created_at ASC
+     LIMIT 1`,
+    [userId],
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function findRevokedByTokenHash(tokenHash: string): Promise<{ userId: string } | null> {
+  const result = await query<{ user_id: string }>(
+    `SELECT user_id FROM refresh_tokens
+     WHERE token_hash = $1 AND revoked_at IS NOT NULL
+     LIMIT 1`,
+    [tokenHash],
+  );
+  return result.rows[0] ? { userId: result.rows[0].user_id } : null;
+}

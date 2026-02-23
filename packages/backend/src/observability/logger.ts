@@ -58,3 +58,101 @@ export const logger = {
     if (shouldLog('error')) process.stderr.write(formatEntry('error', message, meta) + '\n');
   },
 };
+
+
+// --- Header and field redaction ---
+
+const REDACTED_HEADERS = new Set([
+  'authorization',
+  'x-service-key',
+  'cookie',
+  'set-cookie',
+]);
+
+const REDACTED_FIELDS = new Set([
+  'password',
+  'secret',
+  'token',
+  'apikey',
+  'refreshtoken',
+  'accesstoken',
+  'creditcard',
+]);
+
+export function redactHeaders(headers: Record<string, string>): Record<string, string> {
+  const redacted: Record<string, string> = {};
+  for (const [key, value] of Object.entries(headers)) {
+    redacted[key] = REDACTED_HEADERS.has(key.toLowerCase()) ? '[REDACTED]' : value;
+  }
+  return redacted;
+}
+
+export function redactFields(body: Record<string, unknown>): Record<string, unknown> {
+  const redacted: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (REDACTED_FIELDS.has(key.toLowerCase())) {
+      redacted[key] = '[REDACTED]';
+    } else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      redacted[key] = redactFields(value as Record<string, unknown>);
+    } else if (Array.isArray(value)) {
+      redacted[key] = value.map((item) =>
+        item !== null && typeof item === 'object' ? redactFields(item as Record<string, unknown>) : item,
+      );
+    } else {
+      redacted[key] = value;
+    }
+  }
+  return redacted;
+}
+
+// --- Security event logging ---
+
+export function logAuthFailure(details: {
+  sourceIp: string;
+  userAgent?: string;
+  email?: string;
+  reason: string;
+}): void {
+  logger.warn('Security event: authentication failure', {
+    event_type: 'auth_failure',
+    ...getTraceContext(),
+    ...details,
+  });
+}
+
+export function logAuthzFailure(details: {
+  userId: string;
+  resource: string;
+  requiredRole: string;
+  actualRole: string;
+}): void {
+  logger.warn('Security event: authorization failure', {
+    event_type: 'authz_failure',
+    ...getTraceContext(),
+    ...details,
+  });
+}
+
+export function logRateLimitHit(details: {
+  sourceIp: string;
+  endpoint: string;
+  requestCount: number;
+}): void {
+  logger.warn('Security event: rate limit hit', {
+    event_type: 'rate_limit_hit',
+    ...getTraceContext(),
+    ...details,
+  });
+}
+
+export function logWebhookFailure(details: {
+  sourceIp: string;
+  endpoint: string;
+  reason: string;
+}): void {
+  logger.warn('Security event: webhook failure', {
+    event_type: 'webhook_failure',
+    ...getTraceContext(),
+    ...details,
+  });
+}

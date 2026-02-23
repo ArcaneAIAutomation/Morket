@@ -27,7 +27,7 @@ variable "nat_gateway_count" {
 }
 
 variable "enable_flow_logs" {
-  description = "Enable VPC flow logs"
+  description = "Enable VPC flow logs (always enabled, kept for backward compatibility)"
   type        = bool
   default     = true
 }

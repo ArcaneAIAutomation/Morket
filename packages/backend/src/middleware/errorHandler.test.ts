@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import express, { Request, Response } from 'express';
 import request from 'supertest';
 import { errorHandler } from './errorHandler';
@@ -144,6 +144,91 @@ describe('errorHandler middleware', () => {
 
       expect(res.status).toBe(500);
       expect(res.body.error.code).toBe('INTERNAL_ERROR');
+    });
+  });
+
+  describe('production mode hardening', () => {
+    const originalEnv = process.env.NODE_ENV;
+
+    afterEach(() => {
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    it('strips internal file paths from AppError messages in production', async () => {
+      process.env.NODE_ENV = 'production';
+      const spy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+      const app = createApp(new AppError(500, 'DB_ERROR', 'Failed at /app/src/modules/auth/auth.service.ts:42'));
+      const res = await request(app).get('/test');
+
+      expect(res.status).toBe(500);
+      expect(res.body.error.message).toBe('An error occurred');
+      expect(res.body.error.code).toBe('DB_ERROR');
+      expect(JSON.stringify(res.body)).not.toContain('/app/src/');
+      expect(JSON.stringify(res.body)).not.toContain('.ts:42');
+      spy.mockRestore();
+    });
+
+    it('strips DB error details from AppError messages in production', async () => {
+      process.env.NODE_ENV = 'production';
+      const spy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+      const app = createApp(new AppError(500, 'DB_ERROR', 'password authentication failed for user "morket"'));
+      const res = await request(app).get('/test');
+
+      expect(res.body.error.message).toBe('An error occurred');
+      expect(JSON.stringify(res.body)).not.toContain('password authentication');
+      spy.mockRestore();
+    });
+
+    it('preserves safe AppError messages in production', async () => {
+      process.env.NODE_ENV = 'production';
+      const spy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+      const app = createApp(new ValidationError('Invalid email format'));
+      const res = await request(app).get('/test');
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.message).toBe('Invalid email format');
+      spy.mockRestore();
+    });
+
+    it('returns generic message for unknown errors in production', async () => {
+      process.env.NODE_ENV = 'production';
+      const spy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+      const app = createApp(new Error('ECONNREFUSED 127.0.0.1:5432'));
+      const res = await request(app).get('/test');
+
+      expect(res.status).toBe(500);
+      expect(res.body.error.message).toBe('An unexpected error occurred');
+      expect(res.body.error.code).toBe('INTERNAL_ERROR');
+      expect(JSON.stringify(res.body)).not.toContain('ECONNREFUSED');
+      spy.mockRestore();
+    });
+
+    it('logs full AppError details internally even in production', async () => {
+      process.env.NODE_ENV = 'production';
+      const spy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+      const err = new AppError(500, 'DB_ERROR', 'password authentication failed for user "morket"');
+      const app = createApp(err);
+
+      await request(app).get('/test');
+
+      expect(spy).toHaveBeenCalledWith('AppError', expect.objectContaining({
+        code: 'DB_ERROR',
+        message: 'password authentication failed for user "morket"',
+        stack: err.stack,
+      }));
+      spy.mockRestore();
+    });
+
+    it('does not include stack traces in response body in production', async () => {
+      process.env.NODE_ENV = 'production';
+      const spy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+      const app = createApp(new AppError(400, 'TEST', 'safe message'));
+      const res = await request(app).get('/test');
+
+      const body = JSON.stringify(res.body);
+      expect(body).not.toContain('at ');
+      expect(body).not.toContain('node_modules');
+      spy.mockRestore();
     });
   });
 

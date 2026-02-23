@@ -29,6 +29,14 @@ describe('api/client', () => {
     it('enrichmentClient uses /api/v1 baseURL', () => {
       expect(enrichmentClient.defaults.baseURL).toBe('/api/v1');
     });
+
+    it('apiClient sets Referrer-Policy header', () => {
+      expect(apiClient.defaults.headers['Referrer-Policy']).toBe('strict-origin-when-cross-origin');
+    });
+
+    it('enrichmentClient sets Referrer-Policy header', () => {
+      expect(enrichmentClient.defaults.headers['Referrer-Policy']).toBe('strict-origin-when-cross-origin');
+    });
   });
 
   describe('parseApiError', () => {

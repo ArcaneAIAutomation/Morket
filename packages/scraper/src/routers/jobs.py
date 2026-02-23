@@ -11,10 +11,11 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from src.models.requests import BatchScrapeRequest
 from src.models.responses import ApiResponse
+from src.validators.url_validator import validate_url
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,16 @@ def create_jobs_router(*, job_service: Any = None) -> APIRouter:
     @jobs_router.post("/batch")
     async def create_batch(body: BatchScrapeRequest) -> dict:
         """Submit a batch scrape job. Returns 202 with job_id."""
+        invalid_urls = []
+        for target in body.targets:
+            if not await validate_url(target.target_url):
+                invalid_urls.append(target.target_url)
+        if invalid_urls:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid target URLs: only http/https schemes to public IPs are allowed",
+            )
+
         job = await job_service.create_job(
             targets=body.targets,
             callback_url=body.callback_url,

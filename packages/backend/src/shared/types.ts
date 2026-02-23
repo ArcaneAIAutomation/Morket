@@ -1,6 +1,6 @@
 import 'express';
 
-export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer';
+export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'viewer' | 'billing_admin';
 
 declare module 'express' {
   interface Request {

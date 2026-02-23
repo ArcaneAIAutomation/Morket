@@ -167,10 +167,10 @@ class TestBatchScrapeRequest:
         with pytest.raises(ValidationError):
             BatchScrapeRequest(targets=targets)
 
-    def test_empty_targets_is_valid(self):
-        # An empty batch is technically valid per the Pydantic model
-        batch = BatchScrapeRequest(targets=[])
-        assert len(batch.targets) == 0
+    def test_empty_targets_raises(self):
+        # An empty batch is rejected — at least one target is required
+        with pytest.raises(ValidationError):
+            BatchScrapeRequest(targets=[])
 
 
 # ---------------------------------------------------------------------------

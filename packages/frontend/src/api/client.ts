@@ -190,7 +190,10 @@ function attachInterceptors(instance: AxiosInstance): void {
 export const apiClient: AxiosInstance = axios.create({
   baseURL: '/api/v1',
   timeout: 30_000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+  },
 });
 
 attachInterceptors(apiClient);
@@ -199,7 +202,10 @@ attachInterceptors(apiClient);
 export const enrichmentClient: AxiosInstance = axios.create({
   baseURL: '/api/v1',
   timeout: 120_000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+  },
 });
 
 attachInterceptors(enrichmentClient);

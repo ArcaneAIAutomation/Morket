@@ -1,4 +1,5 @@
 import type { FacetBucket, SearchFilters } from '@/types/search.types';
+import { sanitizeHtml } from '@/utils/sanitize';
 
 const FACET_LABELS: Record<string, string> = {
   document_type: 'Document Type',
@@ -59,7 +60,7 @@ export default function FacetSidebar({ facets, filters, onToggle, onClear }: Fac
                       onChange={() => onToggle(field, bucket.value)}
                       className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
-                    <span className="truncate flex-1">{bucket.value.replace('_', ' ')}</span>
+                    <span className="truncate flex-1">{sanitizeHtml(bucket.value.replace('_', ' '))}</span>
                     <span className="text-xs text-gray-400">{bucket.count}</span>
                   </label>
                 );

@@ -1,5 +1,6 @@
 import type { ICellRendererParams } from 'ag-grid-community';
 import type { CellEnrichmentStatus, RecordRow } from '@/types/grid.types';
+import { sanitizeHtml } from '@/utils/sanitize';
 
 const STATUS_COLORS: Record<CellEnrichmentStatus, string> = {
   enriched: 'bg-green-500',
@@ -24,7 +25,7 @@ export default function CellRenderer(props: ICellRendererParams) {
         className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${STATUS_COLORS[status]}`}
         aria-label={`Enrichment status: ${status}`}
       />
-      <span className="truncate">{value != null ? String(value) : ''}</span>
+      <span className="truncate">{value != null ? sanitizeHtml(String(value)) : ''}</span>
     </div>
   );
 }

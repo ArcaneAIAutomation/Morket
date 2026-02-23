@@ -7,7 +7,7 @@ import { _resetRateLimiterState } from '../../src/middleware/rateLimiter';
 const NUM_RUNS = 100;
 
 const app = createApp({
-  corsOrigin: '*',
+  corsOrigins: ['*'],
   jwtSecret: 'test-secret-that-is-at-least-32-chars-long',
   jwtAccessExpiry: '15m',
   jwtRefreshExpiry: '7d',

@@ -52,7 +52,7 @@ terraform/     # AWS IaC (Module 7 — COMPLETE)
 - **HTTP Client**: Axios with dual instances (30s standard, 120s enrichment), auto token refresh, envelope unwrapping
 - **Validation**: Zod for client-side form schemas
 - **Styling**: Tailwind CSS 3 with AG Grid theme overrides
-- **Testing**: Vitest + Testing Library + MSW (API mocking) + fast-check (7 property test suites)
+- **Testing**: Vitest + Testing Library + MSW (API mocking) + fast-check (8 property test suites)
 - **Web Workers**: CSV parse/generate off main thread for datasets ≥10k rows
 - **Features**: Spreadsheet with undo (50-deep), auto-save (30s), context menus, column management, CSV import/export, enrichment job polling (5s), enrichment panel slide-over with "Enrich Selected" toolbar button, analytics dashboard (enrichment/scraping/credits tabs), full-text search with facets and typeahead, role-based UI permissions, offline detection, settings pages (workspace/billing/credentials/members)
 
@@ -89,3 +89,27 @@ terraform/     # AWS IaC (Module 7 — COMPLETE)
 - Never log or persist decrypted credential values in any service
 - OAuth tokens for CRM integrations must be encrypted at rest using per-workspace AES-256-GCM encryption
 - Redis cache operations must be wrapped in try/catch for graceful degradation when Redis is unavailable
+
+## Security Hardening (Security Audit — COMPLETE)
+- **Auth**: JWT tokens include `iss: 'morket'`, `aud: 'morket-api'`, `jti` (revocable via Redis), `role`, `workspaceId` claims
+- **Account lockout**: In-memory tracking, 5 failed attempts / 15 min window
+- **Refresh tokens**: Replay detection (revokes all on reuse), max 10 per user, sliding window renewal, password change revokes all
+- **Token expiry validation**: Zod enforces max 15min access / 7d refresh at config level
+- **RBAC**: Workspace ID cross-check on URL params, object-level ownership middleware, billing_admin restricted to billing endpoints
+- **Rate limiting**: Route-specific limits (auth 5/min, enrichment 20/min, admin 10/min, general 100/min), `Retry-After` header on 429s
+- **Security headers**: HSTS, X-Content-Type-Options, X-Frame-Options: DENY, Permissions-Policy, X-Powered-By disabled
+- **Error handling**: Stack traces and internal paths stripped in production mode
+- **CORS**: Explicit origin allowlist (not wildcard)
+- **Body limits**: 1MB JSON, 10MB file uploads
+- **Input sanitization**: HTML entity encoding (`sanitizeString`), CSV formula injection detection (`isFormulaInjection`), SSRF prevention (`validateUrlSafety`)
+- **AI filter validation**: Field name whitelist and operator set enforcement on AI-generated filters
+- **Encryption**: Master key length validation (32 bytes), workspace ID hash as HKDF salt, write-verify pattern
+- **Security logging**: Header/field redaction (`[REDACTED]`), security event functions (`logAuthFailure`, `logAuthzFailure`, `logRateLimitHit`, `logWebhookFailure`), credential audit logging, trace_id/span_id correlation
+- **Webhook security**: Timestamp in HMAC payload, 5-minute replay window, HTTPS-only subscription URLs, SSRF protection
+- **Scraper**: Constant-time service key comparison (`hmac.compare_digest`), URL validation (scheme + private IP rejection), no hardcoded keys
+- **Frontend**: HTML sanitization on rendered content, deep link parameter validation (UUID/slug patterns), Referrer-Policy header, tokens in memory only
+- **Infrastructure**: Nginx HTTPS redirect + HSTS + CSP + X-Frame-Options DENY, Dockerfiles pinned to specific versions with LABEL directives, Terraform VPC flow logs unconditional, ECS SG restricted to app ports, encryption at rest/transit verified, secret rotation (90-day)
+- **CI/CD**: `npm audit` + `pip-audit` in CI, Trivy container scanning, gitleaks secret scanning, GitHub Actions pinned to commit SHAs, Docker build context secret verification
+- **Dependencies**: All versions pinned (no `^`/`~`/`>=` prefixes)
+- **Docker Compose**: No socket/host mounts, read-only root filesystem + no-new-privileges on app containers
+- **Property tests**: 26 correctness properties with 100+ iterations each across backend (fast-check), frontend (fast-check), and scraper (hypothesis)

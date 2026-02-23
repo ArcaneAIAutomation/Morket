@@ -1,0 +1,4 @@
+# file: C:\OriK.Projects\Morket\packages\scraper\src\validators\url_validator.py
+# hypothesis_version: 6.151.9
+
+['0.0.0.0/8', '10.0.0.0/8', '127.0.0.0/8', '169.254.0.0/16', '172.16.0.0/12', '192.168.0.0/16', 'http', 'https']

@@ -21,16 +21,16 @@ class ScrapeRequest(BaseModel):
     """Request model for a single async scrape task."""
 
     target_type: TargetType
-    target_url: str
+    target_url: str = Field(..., min_length=1)
     requested_fields: list[str] | None = None
-    workspace_id: str
+    workspace_id: str = Field(..., min_length=1)
     callback_url: str | None = None
 
 
 class BatchScrapeRequest(BaseModel):
     """Request model for a batch of scrape targets (max 100)."""
 
-    targets: list[ScrapeRequest] = Field(..., max_length=100)
+    targets: list[ScrapeRequest] = Field(..., min_length=1, max_length=100)
     callback_url: str | None = None
 
 

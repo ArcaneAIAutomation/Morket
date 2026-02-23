@@ -124,6 +124,38 @@ const STATUS_KEYWORDS: Record<string, string> = {
   waiting: 'pending',
 };
 
+// --- AI Filter Whitelist Validation ---
+
+export const ALLOWED_FILTER_FIELDS = new Set<string>(Object.keys(FIELD_KEYWORDS));
+
+export const ALLOWED_FILTER_OPERATORS = new Set<string>([
+  'equals',
+  'contains',
+  'starts_with',
+  'ends_with',
+  'gt',
+  'lt',
+  'gte',
+  'lte',
+]);
+
+export function validateFilters(filters: Record<string, string>): {
+  valid: boolean;
+  invalidFields: string[];
+} {
+  const invalidFields = Object.keys(filters).filter(
+    (key) => !ALLOWED_FILTER_FIELDS.has(key),
+  );
+  return {
+    valid: invalidFields.length === 0,
+    invalidFields,
+  };
+}
+
+export function validateFilterOperator(operator: string): boolean {
+  return ALLOWED_FILTER_OPERATORS.has(operator);
+}
+
 export function parseNaturalLanguageQuery(queryStr: string): {
   filters: Record<string, string>;
   interpretation: string;
@@ -158,6 +190,14 @@ export function parseNaturalLanguageQuery(queryStr: string): {
     }
   }
 
+  // Strip any invalid fields from the result
+  const validation = validateFilters(filters);
+  if (!validation.valid) {
+    for (const field of validation.invalidFields) {
+      delete filters[field];
+    }
+  }
+
   return {
     filters,
     interpretation: interpretations.length > 0
@@ -165,3 +205,4 @@ export function parseNaturalLanguageQuery(queryStr: string): {
       : 'No specific filters detected from query',
   };
 }
+

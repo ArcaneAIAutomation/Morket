@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -73,18 +73,19 @@ def test_async_task_creation_returns_queued(
     """
     # Feature: scraping-microservices, Property 6: Async task creation returns queued status
 
-    app, store = _make_app()
-    client = TestClient(app)
+    with patch("src.routers.scrape.validate_url", new_callable=AsyncMock, return_value=True):
+        app, store = _make_app()
+        client = TestClient(app)
 
-    response = client.post(
-        "/api/v1/scrape",
-        json={
-            "target_type": target_type,
-            "target_url": target_url,
-            "workspace_id": workspace_id,
-        },
-        headers={"X-Service-Key": SERVICE_KEY},
-    )
+        response = client.post(
+            "/api/v1/scrape",
+            json={
+                "target_type": target_type,
+                "target_url": target_url,
+                "workspace_id": workspace_id,
+            },
+            headers={"X-Service-Key": SERVICE_KEY},
+        )
 
     assert response.status_code == 200
     body = response.json()
