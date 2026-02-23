@@ -1,36 +1,272 @@
-# Morket
+<p align="center">
+  <h1 align="center">🚀 Morket</h1>
+  <p align="center"><strong>Your prospects are out there. Morket finds them.</strong></p>
+  <p align="center">The all-in-one data engine for sales and marketing teams who want better leads, faster.</p>
+</p>
 
-A production-grade GTM (Go-To-Market) data engine — think Clay.com, built from scratch. Morket orchestrates multi-provider data enrichment, headless browser scraping, and real-time analytics through a dual-database architecture, all wrapped in a spreadsheet UI that handles 100k+ rows without breaking a sweat.
+---
 
-14 self-contained backend modules. 6 layers of defense-in-depth security. 59 formally specified correctness properties. 400+ tests. One monorepo.
+## What Is Morket?
 
-## What is Morket?
+Morket is a **lead enrichment and data automation platform** that turns incomplete prospect lists into fully loaded, sales-ready databases — automatically.
 
-Morket helps sales and marketing teams enrich their prospect data by orchestrating calls to multiple data providers (Apollo, Clearbit, LinkedIn, etc.) through a unified platform. It combines a durable workflow engine (Temporal.io), a headless scraping fleet (Playwright), and a consumption-based credit system into a single cohesive product. Teams get:
+Think of it this way: you have a spreadsheet with 5,000 company names. That's it. No emails, no phone numbers, no job titles, no LinkedIn profiles. Morket takes that list and fills in the blanks in minutes, pulling data from multiple sources simultaneously so your team can stop researching and start selling.
 
-- **Multi-tenant workspaces** to organize enrichment activities
-- **Encrypted credential storage** for third-party API keys (AES-256-GCM, per-workspace key derivation)
-- **Consumption-based billing** with Stripe subscriptions and credit packs
-- **Role-based access control** across workspace members (owner, admin, member, viewer, billing_admin)
-- **A spreadsheet-like UI** for managing and enriching data (AG Grid with 100k+ row support)
-- **CRM integrations** with Salesforce and HubSpot (OAuth2, bi-directional sync)
-- **Visual workflow builder** for multi-step enrichment pipelines
-- **AI-powered intelligence** — quality scoring, field mapping, duplicate detection, natural language queries
-- **Web scraping** via headless Chromium with anti-detection, proxy rotation, and domain rate limiting
-- **Dual-database analytics** — PostgreSQL for OLTP, ClickHouse for OLAP, with CDC replication between them
-- **Full-text search** with fuzzy matching, faceted filtering, and typeahead via OpenSearch
+**Morket is like hiring a team of research assistants who work 24/7, never make typos, and can look up thousands of contacts in the time it takes you to grab a coffee.** ☕
 
-## Security
+---
 
-Morket implements defense-in-depth security across six layers — from infrastructure hardening down to supply chain verification. Every layer is backed by formally specified correctness properties validated through property-based testing.
+## ✨ Features at a Glance
+
+| What You Get | What It Means for You |
+|---|---|
+| 🔍 **Data Enrichment** | Automatically find emails, phone numbers, job titles, and more |
+| 🌐 **Web Scraping** | Pull data from websites without lifting a finger |
+| 📊 **Spreadsheet Interface** | Work in a familiar Excel-like view — no learning curve |
+| 🔗 **Multi-Provider Support** | Get data from Apollo, Clearbit, Hunter, and LinkedIn all at once |
+| ⚙️ **Workflow Automation** | Build pipelines that run on autopilot |
+| 🤝 **CRM Integrations** | Sync directly with Salesforce and HubSpot |
+| 👥 **Team Collaboration** | Shared workspaces with roles and activity tracking |
+| 📈 **Analytics Dashboard** | See what's working and where your budget goes |
+| 🔎 **Instant Search** | Find any record across your entire database in seconds |
+| 🧠 **AI Intelligence** | Smart suggestions, duplicate detection, and quality scoring |
+| 🔒 **Enterprise Security** | Bank-grade encryption and access controls |
+| 💳 **Pay-As-You-Go Billing** | Only pay for the data you actually use |
+
+---
+
+## 🎯 Features In Depth
+
+### 🔍 Data Enrichment — Fill in the Blanks Automatically
+
+**The problem:** You have a list of leads, but half the fields are empty. Manually looking up each contact takes hours.
+
+**What Morket does:** You upload your list, pick the fields you need (email, phone, job title, company size, LinkedIn URL), and Morket fills them in automatically using multiple data providers at once.
+
+**Example:** *Imagine you have 2,000 company names from a trade show. You paste them into Morket, hit "Enrich," and 10 minutes later you have verified email addresses, direct phone numbers, and job titles for the decision-makers at each company. Your SDR team can start outreach the same afternoon.*
+
+**How it works behind the scenes:** Morket tries your first-choice data provider. If it doesn't have the answer, it automatically falls back to the next one — like a waterfall. You only pay for successful lookups.
+
+---
+
+### 🌐 Web Scraping — Pull Data from Any Website
+
+**The problem:** Some of the best prospect data lives on websites, LinkedIn profiles, and job boards — but copying it by hand is tedious and error-prone.
+
+**What Morket does:** Point Morket at a list of URLs and it extracts structured data automatically. LinkedIn profiles, company websites, job postings — it reads the page and pulls out the fields you care about.
+
+**Example:** *Your marketing team wants to build a list of companies hiring for "Head of Growth." Morket scrapes job boards, extracts company names, locations, and posting details, and delivers a clean spreadsheet ready for outreach.*
+
+---
+
+### 📊 Spreadsheet Interface — Feels Like Excel, Works Like Magic
+
+**The problem:** Most data tools force you to learn a new interface. Your team already knows spreadsheets.
+
+**What Morket does:** Everything happens inside a familiar spreadsheet view. Sort, filter, edit, undo — it all works the way you'd expect. But unlike Excel, this spreadsheet is connected to live data enrichment, auto-saves your work, and handles 100,000+ rows without breaking a sweat.
+
+**Key features:**
+- ✏️ Edit cells directly, with undo (up to 50 steps) and auto-save every 30 seconds
+- 📥 Import CSV files with a column mapping wizard
+- 📤 Export to CSV — all rows or just your selection
+- 🖱️ Right-click context menus for quick actions (enrich, delete, export)
+- ⌨️ Keyboard shortcuts (Ctrl+Z to undo, just like you'd expect)
+
+---
+
+### 🔗 Multi-Provider Support — Don't Put All Your Eggs in One Basket
+
+**The problem:** No single data provider has everything. Apollo might have the email, but Clearbit has the company details, and Hunter has the phone number.
+
+**What Morket does:** Morket connects to multiple data providers — **Apollo, Clearbit, Hunter, and LinkedIn** — and queries them in a smart order. If one provider doesn't have the data, Morket automatically tries the next one. You get the most complete picture possible without managing multiple subscriptions yourself.
+
+**What it means for you:** Higher match rates, more complete data, and less wasted budget on empty lookups.
+
+---
+
+### ⚙️ Workflow Automation — Set It and Forget It
+
+**The problem:** Your enrichment process has multiple steps: import data, enrich emails, enrich phone numbers, score quality, push to CRM. Doing this manually every week is a chore.
+
+**What Morket does:** Build visual workflows that chain these steps together. Set a schedule (daily, weekly, whatever you need) and Morket runs the whole pipeline automatically. If something fails, it retries. If a provider goes down, it switches to a backup.
+
+**Example:** *Every Monday at 8 AM, Morket automatically imports new leads from your marketing form, enriches them with email and phone data, scores their quality, and pushes the top-scoring leads directly into your Salesforce pipeline. You arrive at work with fresh leads waiting.*
+
+---
+
+### 🤝 CRM Integrations — Salesforce & HubSpot, Connected
+
+**The problem:** Enriched data is useless if it's stuck in a separate tool. Your sales team lives in Salesforce or HubSpot.
+
+**What Morket does:** Connect your CRM with a few clicks using secure OAuth. Map your Morket fields to your CRM fields, then push enriched records directly — or pull existing CRM data into Morket for enrichment. Sync history keeps track of everything.
+
+**Supported CRMs:** Salesforce and HubSpot (with more coming)
+
+---
+
+### 👥 Team Collaboration — Work Together, Stay in Control
+
+**The problem:** Multiple people need access to the same data, but you need to control who can do what.
+
+**What Morket does:** Create shared workspaces where your whole team can collaborate. Assign roles to control access:
+
+| Role | What They Can Do |
+|------|-----------------|
+| 👀 **Viewer** | See data, export CSVs |
+| 👤 **Member** | Edit records, run enrichments, import data |
+| 🛡️ **Admin** | Manage credentials, members, and workspace settings |
+| 👑 **Owner** | Full control, including billing and deletion |
+| 💰 **Billing Admin** | Manage subscriptions and payments only |
+
+Plus: activity feeds so you can see who did what, an immutable audit log for compliance, and email invitations with one-click accept.
+
+---
+
+### 📈 Analytics Dashboard — Know What's Working
+
+**The problem:** You're spending money on data enrichment, but you have no idea which providers are delivering results or how your credits are being used.
+
+**What Morket does:** A visual dashboard with three tabs:
+
+- **Enrichment tab** — Success rates by provider, so you know which ones are worth the spend
+- **Scraping tab** — How your web scraping jobs are performing
+- **Credits tab** — Where your budget is going, with usage trends over time
+
+Filter by time range (last 24 hours, 7 days, 30 days, 90 days, or custom) and export reports to CSV.
+
+---
+
+### 🔎 Instant Search — Find Anything, Fast
+
+**The problem:** You have tens of thousands of records. Finding a specific company or contact shouldn't require scrolling through pages.
+
+**What Morket does:** Type a few letters and Morket instantly suggests matching records. Full-text search across all your data with fuzzy matching (so typos don't stop you), faceted filtering (narrow by company, title, location), and results ranked by relevance.
+
+---
+
+### 🧠 AI Intelligence — Smarter Data, Less Effort
+
+**The problem:** Messy data, duplicate records, and inconsistent formatting waste your team's time.
+
+**What Morket does:**
+- **Quality Scoring** — Every record gets a confidence score so you know which leads are solid and which need more work
+- **Smart Field Mapping** — When you import a CSV, Morket auto-detects which columns map to which fields (even if the headers are slightly different)
+- **Duplicate Detection** — Fuzzy matching finds near-duplicates that exact matching would miss ("John Smith" vs "Jon Smith")
+- **Natural Language Queries** — Ask questions in plain English like "show me all marketing directors in New York" and Morket translates it into filters
+
+---
+
+### 🔒 Enterprise Security — Your Data Is Safe
+
+**The problem:** You're handling sensitive contact data. A breach would be catastrophic.
+
+**What Morket does:** Six layers of security protection:
+
+1. **Encryption everywhere** — All credentials and sensitive data encrypted with AES-256-GCM (the same standard banks use)
+2. **Access controls** — Role-based permissions, account lockout after failed logins, and token-based authentication
+3. **API protection** — Rate limiting, input validation, and SSRF prevention
+4. **Audit trail** — Every action is logged. You always know who did what and when
+5. **Infrastructure hardening** — HTTPS everywhere, container security, VPC isolation
+6. **Supply chain security** — All dependencies pinned and scanned for vulnerabilities
+
+---
+
+### 💳 Pay-As-You-Go Billing — No Surprises
+
+**The problem:** Flat-rate data tools charge you whether you use them or not. Some months you need 10,000 lookups, other months you need 500.
+
+**What Morket does:** Credit-based pricing. Buy credits, use them when you need them. Failed lookups don't cost you anything — credits are only consumed on successful enrichments.
+
+**Plans available:** Free (to try it out), Starter, Pro, and Enterprise. Purchase additional credit packs anytime through Stripe.
+
+---
+
+## 🛤️ How It Works — 5 Simple Steps
+
+1. **Sign up** and create a workspace for your team
+2. **Add your data** — paste it in, import a CSV, or pull from your CRM
+3. **Connect your providers** — add API keys for Apollo, Clearbit, Hunter, or use built-in web scraping
+4. **Hit "Enrich"** — Morket fills in the missing data automatically, trying multiple sources
+5. **Use your data** — export to CSV, push to Salesforce/HubSpot, or build automated workflows
+
+That's it. No coding required. No complex setup. Just better data, faster.
+
+---
+
+## 🎯 Who Is Morket For?
+
+| Role | How Morket Helps |
+|------|-----------------|
+| **Sales Development Reps (SDRs)** | Stop spending 2 hours a day on manual research. Get enriched lead lists in minutes. |
+| **Marketing Directors** | Build targeted campaign lists with verified contact data. Know exactly who you're reaching. |
+| **Revenue Operations** | Automate your data pipeline from lead capture to CRM. Eliminate manual data entry. |
+| **Sales Managers** | Give your team clean, complete data so they can focus on selling, not searching. |
+| **Founders & CEOs** | Scale your outbound without scaling your headcount. One tool replaces a stack of subscriptions. |
+| **Investors** | Morket is a modern, full-stack GTM data platform built to production standards with enterprise-grade security. |
+
+---
+
+## ⚡ What Makes Morket Different?
+
+| | Manual Process | Single-Provider Tool | **Morket** |
+|---|---|---|---|
+| **Time to enrich 5,000 leads** | 2–3 weeks | 1–2 days | **Minutes** |
+| **Data completeness** | Depends on who's Googling | Limited to one source | **Multiple providers, automatic fallback** |
+| **Cost control** | Salary + tool subscriptions | Flat monthly fee (use it or lose it) | **Pay only for successful lookups** |
+| **CRM sync** | Copy-paste or CSV upload | Maybe, with extra setup | **Built-in Salesforce & HubSpot sync** |
+| **Duplicate handling** | "I think we already have this one..." | Basic exact matching | **AI-powered fuzzy matching** |
+| **Team collaboration** | Shared Google Sheets 😬 | Per-seat licensing | **Shared workspaces with role-based access** |
+| **Automation** | Reminders on your calendar | Limited triggers | **Visual workflow builder with scheduling** |
+| **Security** | Hope for the best | Varies | **6-layer defense-in-depth, AES-256 encryption** |
+
+---
+
+## ❓ Frequently Asked Questions
+
+**Do I need to be technical to use Morket?**
+Not at all. If you can use a spreadsheet, you can use Morket. The interface is designed to feel familiar from day one.
+
+**What data providers does Morket support?**
+Apollo, Clearbit, Hunter, and LinkedIn (via web scraping). More providers are on the roadmap. You bring your own API keys — Morket orchestrates the lookups.
+
+**How does pricing work?**
+Morket uses a credit system. Each successful data lookup costs a certain number of credits depending on the provider. Failed lookups are free. You can buy credit packs anytime, and there are subscription tiers (Free, Starter, Pro, Enterprise) that include monthly credit allowances.
+
+**Is my data secure?**
+Yes. Morket uses AES-256-GCM encryption (the same standard used by banks and governments), role-based access controls, audit logging, and six layers of security hardening. See the Technical Documentation section below for the full security breakdown.
+
+**Can I try it for free?**
+Yes — the Free plan lets you explore the platform and run a limited number of enrichments to see if it's right for your team.
+
+**Does it integrate with my CRM?**
+Morket integrates with Salesforce and HubSpot out of the box. Connect via OAuth (no API keys to manage), map your fields, and push/pull records with a click.
+
+**How is this different from Clay.com?**
+Morket is an open-source, self-hostable alternative. You own your data, control your infrastructure, and aren't locked into a SaaS vendor. Plus, the multi-provider waterfall enrichment and built-in web scraping give you more flexibility.
+
+**Can my whole team use it?**
+Absolutely. Create a workspace, invite your team via email, and assign roles (Viewer, Member, Admin, Owner). Everyone works from the same data with appropriate access controls.
+
+---
+---
+
+## 🔧 Technical Documentation
+
+> Everything below is for developers, DevOps engineers, and technical evaluators. It covers architecture, API endpoints, tech stack, security internals, project structure, setup instructions, testing, and the development roadmap.
+
+---
+
+## 🛡️ Security
+
+Morket implements defense-in-depth security across 6 layers:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  Layer 6: Supply Chain                                          │
-│  Pinned deps · npm/pip audit · Trivy · Gitleaks · SHA Actions  │
+│  Pinned deps · npm/pip audit · Trivy · Gitleaks · SHA-pinned CI│
 ├─────────────────────────────────────────────────────────────────┤
 │  Layer 5: Observability & Audit                                 │
-│  Redacted logs · Security events · Trace correlation · Audit   │
+│  Header/field redaction · Security event logging · Trace IDs   │
 ├─────────────────────────────────────────────────────────────────┤
 │  Layer 4: Data Protection                                       │
 │  AES-256-GCM · HKDF · XSS encoding · SSRF prevention · CSV    │
@@ -524,7 +760,6 @@ packages/
 
 docker/                                # Dockerfiles for backend, scraper, frontend + nginx config
 terraform/                             # AWS IaC — 13 reusable modules
-.github/                               # CI/CD pipelines (GitHub Actions)
 docker-compose.yml                     # Full local dev stack
 ```
 
@@ -676,7 +911,7 @@ Eight sub-modules covering billing, integrations, data operations, workflow buil
 ### ✅ Security Audit
 > *Status: Complete*
 
-Defense-in-depth security hardening across all 6 layers of the platform — infrastructure, API gateway, authentication, data protection, observability, and supply chain. 13 requirement areas with 26 formally specified correctness properties validated by property-based tests. See the [Security](#security) section above for full details.
+Defense-in-depth security hardening across all 6 layers of the platform — infrastructure, API gateway, authentication, data protection, observability, and supply chain. 13 requirement areas with 26 formally specified correctness properties validated by property-based tests. See the [Security](#-security) section above for full details.
 
 ---
 
