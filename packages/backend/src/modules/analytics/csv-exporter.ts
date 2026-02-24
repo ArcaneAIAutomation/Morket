@@ -100,7 +100,7 @@ export async function streamCSVExport(res: Response, options: CSVExportOptions):
     // Each chunk from the stream is an array of row objects
     const rowArray = Array.isArray(rows) ? rows : [rows];
     for (const row of rowArray) {
-      const parsed = typeof row === 'object' && row !== null ? row as Record<string, unknown> : JSON.parse(String(row));
+      const parsed = typeof row === 'object' && row !== null ? row as unknown as Record<string, unknown> : JSON.parse(String(row));
       res.write(rowToCSVLine(parsed, columns) + '\n');
     }
   }

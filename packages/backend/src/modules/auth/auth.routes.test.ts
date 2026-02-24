@@ -147,7 +147,7 @@ describe('Auth Routes', () => {
   });
 
   describe('POST /api/v1/auth/logout', () => {
-    it('returns 200 with logout message', async () => {
+    it('returns 204 on logout', async () => {
       vi.mocked(authService.logout).mockResolvedValue(undefined);
 
       const app = buildApp();
@@ -155,9 +155,7 @@ describe('Auth Routes', () => {
         .post('/api/v1/auth/logout')
         .send({ refreshToken: 'some-token' });
 
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data).toEqual({ message: 'Logged out' });
+      expect(res.status).toBe(204);
     });
   });
 

@@ -6,7 +6,7 @@ import { recordRequest } from '../observability/metrics';
  * OpenTelemetry auto-instrumentation handles span creation for HTTP + Express;
  * this middleware supplements it with our custom metrics tracking.
  */
-export function tracingMiddleware(req: Request, res: Response, next: NextFunction): void {
+export function tracingMiddleware(_req: Request, res: Response, next: NextFunction): void {
   const start = Date.now();
 
   res.on('finish', () => {

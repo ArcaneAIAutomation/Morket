@@ -51,7 +51,7 @@ export function createDLQRoutes(): Router {
     validate({ query: listDLQQuerySchema }),
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const { page, limit, status } = req.query as z.infer<typeof listDLQQuerySchema>;
+        const { page, limit, status } = req.query as unknown as z.infer<typeof listDLQQuerySchema>;
 
         const result = await dlqRepo.listEvents({ page, limit, status });
 

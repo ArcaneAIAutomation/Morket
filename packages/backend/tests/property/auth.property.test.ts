@@ -23,6 +23,9 @@ vi.mock('../../src/modules/auth/token.repository', () => ({
   findByTokenHash: vi.fn(),
   revokeById: vi.fn(),
   revokeAllForUser: vi.fn(),
+  countActiveForUser: vi.fn().mockResolvedValue(0),
+  findOldestActiveForUser: vi.fn().mockResolvedValue(null),
+  findRevokedByTokenHash: vi.fn().mockResolvedValue(null),
 }));
 
 // ── Mock db module to prevent real connections ──
@@ -31,7 +34,12 @@ vi.mock('../../src/shared/db', () => ({
   getPool: vi.fn(),
 }));
 
-import { login, refresh, logout } from '../../src/modules/auth/auth.service';
+// ── Mock membership.repository to prevent real DB calls from generateTokens ──
+vi.mock('../../src/modules/workspace/membership.repository', () => ({
+  findFirstForUser: vi.fn().mockResolvedValue(null),
+}));
+
+import { login, refresh, logout, _resetLockoutState } from '../../src/modules/auth/auth.service';
 import { findByEmail } from '../../src/modules/auth/user.repository';
 import { createToken, findByTokenHash, revokeById } from '../../src/modules/auth/token.repository';
 import { AuthenticationError } from '../../src/shared/errors';
@@ -112,6 +120,7 @@ const emailArb = fc
 describe('Feature: core-backend-foundation, Auth Properties', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetLockoutState();
   });
 
   /**
@@ -138,6 +147,7 @@ describe('Feature: core-backend-foundation, Auth Properties', () => {
   it('Property 2: Login token structure', async () => {
     await fc.assert(
       fc.asyncProperty(emailArb, passwordArb, async (email, password) => {
+        _resetLockoutState();
         setupTokenMocks();
 
         const passwordHash = await bcrypt.hash(password, 4); // low rounds for speed in tests
@@ -178,6 +188,7 @@ describe('Feature: core-backend-foundation, Auth Properties', () => {
     await fc.assert(
       fc.asyncProperty(emailArb, passwordArb, passwordArb, async (email, correctPassword, wrongPassword) => {
         fc.pre(correctPassword !== wrongPassword);
+        _resetLockoutState();
         setupTokenMocks();
 
         const passwordHash = await bcrypt.hash(correctPassword, 4);
@@ -221,6 +232,7 @@ describe('Feature: core-backend-foundation, Auth Properties', () => {
   it('Property 4: Refresh token rotation', async () => {
     await fc.assert(
       fc.asyncProperty(emailArb, passwordArb, async (email, password) => {
+        _resetLockoutState();
         setupTokenMocks();
 
         const passwordHash = await bcrypt.hash(password, 4);
@@ -259,6 +271,7 @@ describe('Feature: core-backend-foundation, Auth Properties', () => {
   it('Property 5: Logout invalidates token', async () => {
     await fc.assert(
       fc.asyncProperty(emailArb, passwordArb, async (email, password) => {
+        _resetLockoutState();
         setupTokenMocks();
 
         const passwordHash = await bcrypt.hash(password, 4);

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as fc from 'fast-check';
-import { searchQuerySchema, searchResultSchema } from '../../src/modules/search/search.schemas';
+import { searchQuerySchema, searchResultSchema, suggestQuerySchema, workspaceParamsSchema } from '../../src/modules/search/search.schemas';
 import {
   getWorkspaceIndexName,
   WORKSPACE_INDEX_PREFIX,
@@ -1489,7 +1489,6 @@ describe('Feature: search-layer, Property Tests', () => {
     });
 
     it('suggest prefix < 2 chars is rejected by suggestQuerySchema', () => {
-      const { suggestQuerySchema } = require('../../src/modules/search/search.schemas');
       fc.assert(
         fc.property(
           fc.string({ minLength: 0, maxLength: 1 }),
@@ -1516,7 +1515,6 @@ describe('Feature: search-layer, Property Tests', () => {
     });
 
     it('non-UUID workspace ID is rejected by workspaceParamsSchema', () => {
-      const { workspaceParamsSchema } = require('../../src/modules/search/search.schemas');
       fc.assert(
         fc.property(
           fc.string({ minLength: 1, maxLength: 50 }).filter((s) => {

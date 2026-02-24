@@ -121,7 +121,10 @@ export default function CreditsTab() {
                 cx="50%"
                 cy="50%"
                 outerRadius={100}
-                label={({ source, percentageOfTotal }) => `${source} (${percentageOfTotal.toFixed(1)}%)`}
+                label={(props) => {
+                  const entry = props as unknown as { name: string; percent: number };
+                  return `${entry.name} (${(entry.percent * 100).toFixed(1)}%)`;
+                }}
               >
                 {bySource.map((_, i) => (
                   <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />

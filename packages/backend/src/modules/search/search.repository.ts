@@ -1,6 +1,6 @@
 import { type PoolClient } from 'pg';
 
-import { getPool, query } from '../../shared/db';
+import { query } from '../../shared/db';
 
 // ---------------------------------------------------------------------------
 // Exported domain interfaces (camelCase)
@@ -81,6 +81,7 @@ export interface BatchResult<T> {
 // ---------------------------------------------------------------------------
 
 interface IndexStatusRow {
+  [key: string]: unknown;
   id: string;
   workspace_id: string;
   last_indexed_at: Date | null;
@@ -93,6 +94,7 @@ interface IndexStatusRow {
 }
 
 interface ReindexJobRow {
+  [key: string]: unknown;
   id: string;
   workspace_id: string;
   status: string;
@@ -106,6 +108,7 @@ interface ReindexJobRow {
 }
 
 interface EnrichmentRecordRow {
+  [key: string]: unknown;
   id: string;
   workspace_id: string;
   job_id: string;
@@ -118,6 +121,7 @@ interface EnrichmentRecordRow {
 }
 
 interface ContactCompanyRecordRow {
+  [key: string]: unknown;
   id: string;
   workspace_id: string;
   name: string | null;
@@ -133,6 +137,7 @@ interface ContactCompanyRecordRow {
 }
 
 interface ScrapeResultRow {
+  [key: string]: unknown;
   id: string;
   workspace_id: string;
   job_id: string;

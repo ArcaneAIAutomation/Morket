@@ -902,9 +902,9 @@ export function createSearchService(cache: SearchCache): SearchService {
 
       try {
         const { body } = await os.cat.indices({
-          index: 'morket-workspace-*',
+          index: ['morket-workspace-*'],
           format: 'json',
-          h: 'index,health,docs.count,store.size',
+          h: ['index', 'health', 'docs.count', 'store.size'],
         });
 
         if (!Array.isArray(body)) return [];

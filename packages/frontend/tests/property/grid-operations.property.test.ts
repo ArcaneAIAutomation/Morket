@@ -133,7 +133,7 @@ describe('Property 17: Column layout persistence', () => {
           resetGridStore();
           const baseCols = newOrder.map((id, i) => ({
             id, field: id, headerName: id, dataType: 'text' as const,
-            width: 100, pinned: null as const, hidden: false, sortable: true,
+            width: 100, pinned: null as ('left' | null), hidden: false, sortable: true,
             filterable: true, editable: true, enrichmentField: null,
             enrichmentProvider: null, order: i,
           }));

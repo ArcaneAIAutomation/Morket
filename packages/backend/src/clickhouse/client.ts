@@ -26,7 +26,6 @@ export function initClickHouse(config: ClickHouseConfig): ClickHouseClient {
       password: config.password,
       max_open_connections: config.maxOpenConnections ?? 10,
       request_timeout: config.requestTimeout ?? 30_000,
-      connect_timeout: config.connectTimeout ?? 5_000,
     });
   }
   return client;

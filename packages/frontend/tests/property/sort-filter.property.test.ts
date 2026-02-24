@@ -50,6 +50,7 @@ function filterRows<T extends Record<string, unknown>>(
 // ---------------------------------------------------------------------------
 
 interface TestRow {
+  [key: string]: unknown;
   id: string;
   name: string;
   age: number;

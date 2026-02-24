@@ -57,7 +57,7 @@ export async function list(userId: string): Promise<Workspace[]> {
   return workspaceRepo.findAllForUser(userId);
 }
 
-export async function getById(workspaceId: string, userId: string): Promise<Workspace> {
+export async function getById(workspaceId: string, _userId: string): Promise<Workspace> {
   const workspace = await workspaceRepo.findById(workspaceId);
   if (!workspace) {
     throw new NotFoundError('Workspace not found');

@@ -25,7 +25,6 @@ export function createAnalyticsRoutes(): Router {
   const service = createAnalyticsService(cache);
   const controller = createAnalyticsController(service);
 
-  const vParams = { params: workspaceParamsSchema };
   const vTimeRange = { params: workspaceParamsSchema, query: timeRangeQuerySchema };
   const vOverTime = { params: workspaceParamsSchema, query: overTimeQuerySchema };
   const vExport = { params: workspaceParamsSchema, query: exportQuerySchema };

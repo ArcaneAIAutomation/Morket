@@ -4,7 +4,7 @@ import type { TimeRangeQuery, Granularity } from './analytics.schemas';
 import type { AnalyticsService } from './analytics.service';
 import type { CSVExportOptions } from './csv-exporter';
 import { streamCSVExport } from './csv-exporter';
-import { AppError } from '../../shared/errors';
+// AppError available if needed for future error handling
 
 interface AnalyticsMeta {
   cached: boolean;

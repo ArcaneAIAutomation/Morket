@@ -7,6 +7,18 @@ import * as creditService from '../credit/credit.service';
 import { NotFoundError, ValidationError } from '../../shared/errors';
 import { env } from '../../config/env';
 
+// The Stripe 2026-01-28.clover API types removed current_period_start/end from Subscription,
+// but the runtime API still returns them. Use this helper to access them safely.
+type SubscriptionWithPeriod = Stripe.Subscription & {
+  current_period_start: number;
+  current_period_end: number;
+};
+
+// Similarly, Invoice.subscription was removed from types but still returned at runtime.
+type InvoiceWithSubscription = Stripe.Invoice & {
+  subscription: string | Stripe.Subscription | null;
+};
+
 /**
  * Returns all available plans.
  */
@@ -251,7 +263,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 
   // Fetch full subscription to get period dates
   const stripe = requireStripe();
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId) as unknown as SubscriptionWithPeriod;
 
   await billingRepo.updateStripeSubscription(workspaceId, {
     stripeSubscriptionId: subscriptionId,
@@ -272,14 +284,15 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 }
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
-  const subscriptionId = typeof invoice.subscription === 'string'
-    ? invoice.subscription
-    : invoice.subscription?.id;
+  const inv = invoice as InvoiceWithSubscription;
+  const subscriptionId = typeof inv.subscription === 'string'
+    ? inv.subscription
+    : inv.subscription?.id;
 
   if (!subscriptionId) return;
 
   // Skip the first invoice (handled by checkout.session.completed)
-  if (invoice.billing_reason === 'subscription_create') return;
+  if (inv.billing_reason === 'subscription_create') return;
 
   const billing = await billingRepo.findByStripeSubscriptionId(subscriptionId);
   if (!billing) return;
@@ -289,7 +302,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
 
   // Renew billing cycle dates
   const stripe = requireStripe();
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId) as unknown as SubscriptionWithPeriod;
 
   await billingRepo.updateStripeSubscription(billing.workspaceId, {
     stripeSubscriptionId: subscriptionId,
@@ -310,9 +323,10 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
-  const subscriptionId = typeof invoice.subscription === 'string'
-    ? invoice.subscription
-    : invoice.subscription?.id;
+  const inv = invoice as InvoiceWithSubscription;
+  const subscriptionId = typeof inv.subscription === 'string'
+    ? inv.subscription
+    : inv.subscription?.id;
 
   if (!subscriptionId) return;
 
@@ -323,26 +337,27 @@ async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
-  const billing = await billingRepo.findByStripeSubscriptionId(subscription.id);
+  const sub = subscription as SubscriptionWithPeriod;
+  const billing = await billingRepo.findByStripeSubscriptionId(sub.id);
   if (!billing) return;
 
   // Determine plan from price ID
-  const priceId = subscription.items.data[0]?.price?.id;
+  const priceId = sub.items.data[0]?.price?.id;
   const planDef = priceId ? getPlanByStripePriceId(priceId) : null;
 
   if (planDef) {
     await billingRepo.updateStripeSubscription(billing.workspaceId, {
-      stripeSubscriptionId: subscription.id,
-      subscriptionStatus: subscription.status,
+      stripeSubscriptionId: sub.id,
+      subscriptionStatus: sub.status,
       planType: planDef.slug,
       creditLimit: planDef.creditLimit,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-      trialEndsAt: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
+      currentPeriodStart: new Date(sub.current_period_start * 1000),
+      currentPeriodEnd: new Date(sub.current_period_end * 1000),
+      trialEndsAt: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
     });
   } else {
     // Just sync status if we can't determine the plan
-    await billingRepo.updateSubscriptionStatus(billing.workspaceId, subscription.status);
+    await billingRepo.updateSubscriptionStatus(billing.workspaceId, sub.status);
   }
 }
 

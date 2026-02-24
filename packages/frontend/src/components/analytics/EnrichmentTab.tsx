@@ -115,7 +115,10 @@ export default function EnrichmentTab() {
           <p className="text-gray-500 text-sm py-12 text-center">No data for selected period</p>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={byProvider} onClick={(e) => e?.activePayload && handleProviderClick(e.activePayload[0].payload)}>
+            <BarChart data={byProvider} onClick={(e: Record<string, unknown> | null) => {
+              const payload = e?.activePayload as Array<{ payload: ProviderBreakdown }> | undefined;
+              if (payload) handleProviderClick(payload[0].payload);
+            }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="providerSlug" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />

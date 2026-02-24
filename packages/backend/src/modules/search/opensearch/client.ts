@@ -1,6 +1,5 @@
 import { Client } from '@opensearch-project/opensearch';
 import { readFileSync } from 'fs';
-import { logger } from '../../../shared/logger';
 
 export interface OpenSearchConfig {
   nodeUrls: string[];

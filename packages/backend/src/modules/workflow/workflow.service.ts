@@ -36,7 +36,7 @@ export async function updateWorkflow(
   workflowId: string,
   data: { name?: string; description?: string; graph?: GraphDefinition },
 ) {
-  const workflow = requireWorkflow(await workflowRepo.getWorkflow(workspaceId, workflowId));
+  requireWorkflow(await workflowRepo.getWorkflow(workspaceId, workflowId));
 
   if (data.name || data.description !== undefined) {
     await workflowRepo.updateWorkflowMeta(workflowId, {
@@ -77,11 +77,11 @@ export async function rollback(workspaceId: string, workflowId: string, targetVe
 // --- Execution ---
 
 export async function executeWorkflow(workspaceId: string, workflowId: string) {
-  const workflow = requireWorkflow(await workflowRepo.getWorkflow(workspaceId, workflowId));
+  const wf = requireWorkflow(await workflowRepo.getWorkflow(workspaceId, workflowId));
   const version = await workflowRepo.getLatestVersion(workflowId);
   if (!version) throw new ValidationError('Workflow has no versions');
 
-  const run = await workflowRepo.createRun(workflowId, workspaceId, workflow.currentVersion);
+  const run = await workflowRepo.createRun(workflowId, workspaceId, wf.currentVersion);
 
   // Async execution — in production this would be dispatched to Temporal
   // For now, mark as completed immediately with placeholder results

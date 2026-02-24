@@ -82,7 +82,7 @@ export function createSearchController(service: SearchService) {
    * GET /api/v1/admin/search/health
    * Returns OpenSearch cluster health.
    */
-  async function getClusterHealth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async function getClusterHealth(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const health = await service.getClusterHealth();
       res.status(200).json(successResponse(health));
@@ -95,7 +95,7 @@ export function createSearchController(service: SearchService) {
    * GET /api/v1/admin/search/indices
    * Returns list of workspace search indices.
    */
-  async function getIndexList(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async function getIndexList(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const indices = await service.getIndexList();
       res.status(200).json(successResponse(indices));

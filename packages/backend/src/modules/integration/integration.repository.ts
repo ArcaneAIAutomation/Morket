@@ -1,5 +1,4 @@
 import { query } from '../../shared/db';
-import { NotFoundError } from '../../shared/errors';
 
 // --- Integration Records ---
 
@@ -136,18 +135,9 @@ export async function replaceFieldMappings(
 
   if (mappings.length === 0) return [];
 
-  const values: unknown[] = [];
-  const placeholders: string[] = [];
-  mappings.forEach((m, i) => {
-    const offset = i * 4;
-    placeholders.push(`($1, $2, $${offset + 3}, $${offset + 4}, $${offset + 5}, gen_random_uuid())`);
-    values.push(m.morketField, m.crmField, m.direction);
-  });
-
-  // Build a simpler insert
   const insertValues: unknown[] = [workspaceId, slug];
   const insertPlaceholders: string[] = [];
-  mappings.forEach((m, i) => {
+  mappings.forEach((m) => {
     const base = insertValues.length + 1;
     insertPlaceholders.push(`(gen_random_uuid(), $1, $2, $${base}, $${base + 1}, $${base + 2})`);
     insertValues.push(m.morketField, m.crmField, m.direction);
@@ -161,6 +151,7 @@ export async function replaceFieldMappings(
   );
   return result.rows.map(toFieldMappingRecord);
 }
+
 
 // --- Sync History ---
 

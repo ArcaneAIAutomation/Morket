@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getMigrationFiles, runClickHouseMigrations } from '../../migrations/clickhouse/runnergrations/clickhouse/runner';
+import { getMigrationFiles, runClickHouseMigrations } from '../../migrations/clickhouse/runner';
 import type { ClickHouseClient } from '@clickhouse/client';
 import * as fs from 'fs';
 import * as path from 'path';

@@ -134,7 +134,7 @@ export async function register(
   email: string,
   password: string,
   name: string,
-  config: AuthConfig,
+  _config: AuthConfig,
 ): Promise<User> {
   const existing = await findByEmail(email);
   if (existing) {
@@ -262,7 +262,7 @@ export async function changePassword(
   userId: string,
   oldPassword: string,
   newPassword: string,
-  config: AuthConfig,
+  _config: AuthConfig,
 ): Promise<void> {
   const user = await findById(userId);
   if (!user) {

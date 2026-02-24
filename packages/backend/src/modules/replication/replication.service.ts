@@ -14,7 +14,7 @@ import {
 // These modules will be created in Tasks 4 and 5 respectively.
 // Import their interfaces and use them when available.
 import type { AnalyticsCache } from '../analytics/analytics.cache';
-import type { DLQRepository, DeadLetterEvent } from './dlq.repository';
+import type { DLQRepository } from './dlq.repository';
 
 /** Channels the replication service listens on. */
 export const CHANNELS = ['enrichment_events', 'scrape_events', 'credit_events'] as const;
@@ -188,12 +188,12 @@ export function createReplicationService(
       }
 
       // Insert into ClickHouse with retry
-      await insertWithRetry(channel, rows);
+      await insertWithRetry(channel, rows as unknown as Record<string, unknown>[]);
 
       stats.totalFlushed += rows.length;
 
       // Invalidate analytics cache for affected workspaces
-      invalidateCacheForRows(channel, rows);
+      invalidateCacheForRows(channel, rows as unknown as Record<string, unknown>[]);
     } catch (err) {
       stats.totalFailed += events.length;
 
@@ -310,7 +310,7 @@ export function createReplicationService(
 
   /** Invalidate analytics cache for workspace IDs found in flushed rows. */
   function invalidateCacheForRows(
-    channel: Channel,
+    _channel: Channel,
     rows: Record<string, unknown>[],
   ): void {
     if (!deps.analyticsCache) return;
