@@ -361,7 +361,7 @@ This isn't a CRUD app with a login page. Morket is a full-stack data platform bu
 - **Temporal.io** for durable, fault-tolerant enrichment workflows with idempotency keys and cancellation signals
 - **Headless browser scraping** with anti-detection (fingerprint randomization, webdriver masking), proxy rotation, and per-domain rate limiting
 - **AG Grid spreadsheet** handling 100k+ rows with DOM virtualization, undo stack, auto-save, and Web Worker CSV processing
-- **59 correctness properties** validated by property-based tests (33 enrichment/core + 26 security) across three frameworks
+- **68 correctness properties** validated by property-based tests (33 enrichment/core + 26 security + 9 menu-fixes/options) across three frameworks
 - **Full AWS infrastructure as code** — 13 Terraform modules, GitHub Actions CI/CD with path-filtered builds and production approval gates
 - **Defense-in-depth security** across 6 layers, from HSTS and CSP at the edge to pinned dependencies and container scanning in the supply chain
 
@@ -440,7 +440,7 @@ The backend follows a layered architecture: **Routes → Controllers → Service
 
 ## Current Status: Complete ✅
 
-All 8 modules are complete, plus a comprehensive security audit. Application code (Modules 1–6) covers the full backend API, enrichment orchestration, scraping microservices, spreadsheet UI, OLAP analytics, and search layer. Module 7 provides Docker containerization, Terraform IaC for AWS, and GitHub Actions CI/CD. Module 8 adds Stripe billing, CRM integrations, advanced data operations, workflow builder, AI/ML intelligence, team collaboration, Redis caching, and observability. The security audit hardens all layers with 26 property-based correctness tests.
+All 8 modules are complete, plus a comprehensive security audit and menu fixes with Options configuration. Application code (Modules 1–6) covers the full backend API, enrichment orchestration, scraping microservices, spreadsheet UI, OLAP analytics, and search layer. Module 7 provides Docker containerization, Terraform IaC for AWS, and GitHub Actions CI/CD. Module 8 adds Stripe billing, CRM integrations, advanced data operations, workflow builder, AI/ML intelligence, team collaboration, Redis caching, and observability. The security audit hardens all layers with 26 property-based correctness tests. The menu-fixes-options-config spec adds robust error/loading states across settings pages, a members list endpoint, and a full Options/service configuration page with encrypted storage, connection testing, and credential sync (9 additional property tests).
 
 ### What's built
 
@@ -480,6 +480,13 @@ DELETE /api/v1/workspaces/:id                    # owner
 POST   /api/v1/workspaces/:id/members            # admin+
 DELETE /api/v1/workspaces/:id/members/:userId     # admin+
 PUT    /api/v1/workspaces/:id/members/:userId/role # admin+
+GET    /api/v1/workspaces/:id/members            # member+ (list members)
+
+# Options / Service Configuration (authenticated)
+GET    /api/v1/workspaces/:id/options              # admin+ (list all service configs)
+PUT    /api/v1/workspaces/:id/options              # admin+ (upsert service config)
+DELETE /api/v1/workspaces/:id/options              # admin+ (delete service config)
+POST   /api/v1/workspaces/:id/options/:serviceKey/test  # admin+ (test connection)
 
 # Credentials (authenticated)
 POST   /api/v1/workspaces/:id/credentials         # admin+
@@ -713,7 +720,7 @@ packages/
 │   │   ├── shared/                    # DB pool, encryption, errors, envelope, types
 │   │   ├── app.ts                     # Express app assembly
 │   │   └── index.ts                   # Entry point
-│   ├── migrations/                    # 22 sequential PostgreSQL migrations + ClickHouse migrations
+│   ├── migrations/                    # 23 sequential PostgreSQL migrations + ClickHouse migrations
 │   └── tests/
 │       ├── integration/               # End-to-end HTTP flow tests
 │       └── property/                  # fast-check property-based tests
@@ -735,7 +742,7 @@ packages/
 │
 ├── frontend/                          # React spreadsheet UI (Module 4)
 │   ├── src/
-│   │   ├── api/                       # Axios HTTP client + per-domain API modules (auth, workspace, records, enrichment, analytics, search, billing, credentials, members)
+│   │   ├── api/                       # Axios HTTP client + per-domain API modules (auth, workspace, records, enrichment, analytics, search, billing, credentials, members, options)
 │   │   ├── components/
 │   │   │   ├── analytics/             # Dashboard with enrichment/scraping/credits tabs + Recharts
 │   │   │   ├── auth/                  # LoginForm, RegisterForm
@@ -743,7 +750,7 @@ packages/
 │   │   │   ├── jobs/                  # JobMonitor, JobRow, JobRecordDetail
 │   │   │   ├── layout/               # AppShell, AuthGuard, Header, Sidebar
 │   │   │   ├── search/               # SearchBar, SearchResultsView, FacetSidebar, SearchPagination
-│   │   │   ├── settings/             # Workspace, Billing, Credential, Member settings
+│   │   │   ├── settings/             # Workspace, Billing, Credential, Member, Options settings
 │   │   │   ├── shared/               # ErrorBoundary, Toast, ConfirmDialog, LoadingSpinner, OfflineBanner
 │   │   │   └── spreadsheet/          # SpreadsheetView (AG Grid), GridToolbar, ContextMenu, CSVImportDialog, ColumnDialog, CellRenderer, StatusBar
 │   │   ├── hooks/                     # useAuth, useAutoSave, useJobPolling, useRole, useSearch, useAnalytics, useOnlineStatus
@@ -752,7 +759,7 @@ packages/
 │   │   ├── utils/                     # formatters, permissions (role-based action map)
 │   │   └── workers/                   # CSV Web Worker (parse + generate off main thread)
 │   ├── tests/
-│   │   └── property/                  # 7 fast-check property test suites
+│   │   └── property/                  # 11 fast-check property test suites
 │   ├── index.html
 │   ├── vite.config.ts                 # Vite 6 + React plugin + dev proxy + Vitest config
 │   ├── tailwind.config.js
@@ -774,8 +781,8 @@ npm run test:coverage # With coverage report
 The test suite spans three frameworks across three languages:
 
 - **400+ unit and integration tests** covering schema validation, middleware behavior, service logic, adapter behavior, and full HTTP flows
-- **59 property-based correctness properties** (33 enrichment/core + 26 security) — not example-based tests, but formal specifications that generate randomized inputs to verify invariants hold universally
-- **100+ iterations per property = 5,900+ generated test cases** across the full input space
+- **68 property-based correctness properties** (33 enrichment/core + 26 security + 9 menu-fixes/options) — not example-based tests, but formal specifications that generate randomized inputs to verify invariants hold universally
+- **100+ iterations per property = 6,800+ generated test cases** across the full input space
 - **Three testing frameworks**: Vitest + fast-check (TypeScript backend/frontend), pytest + hypothesis (Python scraper)
 
 Property coverage includes: auth, RBAC, encryption, rate limiting, circuit breaker, waterfall enrichment, idempotency, webhooks, input sanitization, SSRF prevention, deep link validation, credential handling, and audit logging.
@@ -845,8 +852,8 @@ React-based spreadsheet interface using AG Grid for high-performance data manipu
 - Role-based UI permissions: viewer < member < admin < owner, toolbar buttons conditionally rendered via `useRole()` hook
 - Offline detection with banner warning, auto-save skip when offline
 - Lazy-loaded routes (AnalyticsDashboard, SearchResultsView) via React.lazy + Suspense
-- Settings pages: workspace config, billing/credits, credential management (masked keys), member management
-- 7 property-based test suites (fast-check): api-envelope, csv-roundtrip, enrichment-cost, grid-operations, permissions, sort-filter, toast-behavior
+- Settings pages: workspace config, billing/credits, credential management (masked keys), member management, options/service configuration
+- 11 property-based test suites (fast-check): api-envelope, csv-roundtrip, enrichment-cost, grid-operations, permissions, sort-filter, toast-behavior, error-extraction, billing-resilience, billing-independence, options-validation
 - Unit tests with Testing Library + MSW for API mocking
 
 ---

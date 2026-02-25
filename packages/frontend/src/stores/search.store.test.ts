@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useSearchStore } from './search.store';
+import { useSearchStore, extractErrorMessage } from './search.store';
 
 // Mock the search API
 vi.mock('@/api/search.api', () => ({
@@ -194,5 +194,90 @@ describe('search.store', () => {
       expect(state.loading).toBe(false);
       expect(state.error).toBeNull();
     });
+  });
+});
+
+describe('extractErrorMessage', () => {
+  it('extracts message from ApiError-shaped object', () => {
+    const apiError = { status: 400, message: 'Bad request' };
+    expect(extractErrorMessage(apiError)).toBe('Bad request');
+  });
+
+  it('returns descriptive message for 500 errors', () => {
+    const apiError = { status: 500, message: 'Internal server error' };
+    expect(extractErrorMessage(apiError)).toBe('Search service is unavailable. Please try again later.');
+  });
+
+  it('returns network error message when status is 0', () => {
+    const networkError = { status: 0, message: 'Network Error' };
+    expect(extractErrorMessage(networkError)).toBe(
+      'Unable to connect to the search service. Check your connection and try again.',
+    );
+  });
+
+  it('extracts message from Error instance', () => {
+    expect(extractErrorMessage(new Error('Something broke'))).toBe('Something broke');
+  });
+
+  it('returns string errors as-is', () => {
+    expect(extractErrorMessage('plain string error')).toBe('plain string error');
+  });
+
+  it('returns fallback for null', () => {
+    expect(extractErrorMessage(null)).toBe('An unexpected error occurred');
+  });
+
+  it('returns fallback for undefined', () => {
+    expect(extractErrorMessage(undefined)).toBe('An unexpected error occurred');
+  });
+
+  it('never returns [object Object]', () => {
+    const result = extractErrorMessage({ foo: 'bar' });
+    expect(result).not.toBe('[object Object]');
+    expect(result).toBe('An unexpected error occurred');
+  });
+
+  it('handles ApiError with fieldErrors', () => {
+    const apiError = { status: 400, message: 'Validation failed', fieldErrors: { name: 'required' } };
+    expect(extractErrorMessage(apiError)).toBe('Validation failed');
+  });
+
+  it('handles object with empty message string', () => {
+    const err = { status: 422, message: '' };
+    // Empty message with non-500/non-0 status falls through to fallback
+    expect(extractErrorMessage(err)).toBe('An unexpected error occurred');
+  });
+
+  it('returns descriptive message for 500 even with empty message', () => {
+    const err = { status: 500, message: '' };
+    expect(extractErrorMessage(err)).toBe('Search service is unavailable. Please try again later.');
+  });
+
+  it('handles object with non-string message', () => {
+    const err = { message: 42 };
+    expect(extractErrorMessage(err)).toBe('An unexpected error occurred');
+  });
+
+  it('sets descriptive error from 500 ApiError in executeSearch', async () => {
+    const apiError = { status: 500, message: 'Search service unavailable' };
+    (searchApi.searchRecords as ReturnType<typeof vi.fn>).mockRejectedValue(apiError);
+
+    await useSearchStore.getState().executeSearch('ws-1');
+
+    const state = useSearchStore.getState();
+    expect(state.error).toBe('Search service is unavailable. Please try again later.');
+    expect(state.loading).toBe(false);
+  });
+
+  it('sets network error message in executeSearch when status is 0', async () => {
+    const networkError = { status: 0, message: 'Network Error' };
+    (searchApi.searchRecords as ReturnType<typeof vi.fn>).mockRejectedValue(networkError);
+
+    await useSearchStore.getState().executeSearch('ws-1');
+
+    const state = useSearchStore.getState();
+    expect(state.error).toBe(
+      'Unable to connect to the search service. Check your connection and try again.',
+    );
   });
 });

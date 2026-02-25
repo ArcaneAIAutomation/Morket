@@ -89,14 +89,75 @@ describe('SearchResultsView', () => {
     expect(screen.getByText(/Try broadening your search/)).toBeInTheDocument();
   });
 
-  it('shows error state', () => {
+  it('shows error state with retry button', () => {
+    const executeSearchMock = vi.fn();
     useSearchStore.setState({
       loading: false,
       error: 'Search service unavailable',
+      executeSearch: executeSearchMock,
     });
     renderView();
 
     expect(screen.getByText('Search service unavailable')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  });
+
+  it('hides results and pagination when error is set', () => {
+    useSearchStore.setState({
+      loading: false,
+      error: 'Something went wrong',
+      results: [mockResult],
+      totalResults: 100,
+      totalPages: 5,
+      page: 1,
+      executeSearch: vi.fn(),
+    });
+    renderView();
+
+    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+    // Results should be hidden
+    expect(screen.queryByText('Acme Corp')).not.toBeInTheDocument();
+    // Pagination should be hidden
+    expect(screen.queryByText(/Page 1 of 5/)).not.toBeInTheDocument();
+  });
+
+  it('displays network error message', () => {
+    useSearchStore.setState({
+      loading: false,
+      error: 'Unable to connect to the search service. Check your connection and try again.',
+      executeSearch: vi.fn(),
+    });
+    renderView();
+
+    expect(
+      screen.getByText('Unable to connect to the search service. Check your connection and try again.'),
+    ).toBeInTheDocument();
+  });
+
+  it('displays 500 error message', () => {
+    useSearchStore.setState({
+      loading: false,
+      error: 'Search service is unavailable. Please try again later.',
+      executeSearch: vi.fn(),
+    });
+    renderView();
+
+    expect(
+      screen.getByText('Search service is unavailable. Please try again later.'),
+    ).toBeInTheDocument();
+  });
+
+  it('retry button re-executes search', () => {
+    const executeSearchMock = vi.fn();
+    useSearchStore.setState({
+      loading: false,
+      error: 'Search failed',
+      executeSearch: executeSearchMock,
+    });
+    renderView();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(executeSearchMock).toHaveBeenCalledWith('ws-1');
   });
 
   it('renders sort dropdown with options', () => {

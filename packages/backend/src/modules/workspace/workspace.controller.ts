@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import * as workspaceService from './workspace.service';
+import * as optionsService from './options.service';
+import { resolveServiceGroup } from './options.service';
 import { successResponse } from '../../shared/envelope';
+import { env } from '../../config/env';
 
 export interface WorkspaceController {
   create(req: Request, res: Response, next: NextFunction): Promise<void>;
@@ -8,10 +11,16 @@ export interface WorkspaceController {
   getById(req: Request, res: Response, next: NextFunction): Promise<void>;
   update(req: Request, res: Response, next: NextFunction): Promise<void>;
   delete(req: Request, res: Response, next: NextFunction): Promise<void>;
+  listMembers(req: Request, res: Response, next: NextFunction): Promise<void>;
   addMember(req: Request, res: Response, next: NextFunction): Promise<void>;
   removeMember(req: Request, res: Response, next: NextFunction): Promise<void>;
   updateMemberRole(req: Request, res: Response, next: NextFunction): Promise<void>;
+  listOptions(req: Request, res: Response, next: NextFunction): Promise<void>;
+  upsertOption(req: Request, res: Response, next: NextFunction): Promise<void>;
+  deleteOption(req: Request, res: Response, next: NextFunction): Promise<void>;
+  testOptionConnection(req: Request, res: Response, next: NextFunction): Promise<void>;
 }
+
 
 export function createWorkspaceController(): WorkspaceController {
   return {
@@ -61,6 +70,15 @@ export function createWorkspaceController(): WorkspaceController {
       }
     },
 
+    async listMembers(req: Request, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const members = await workspaceService.listMembers(req.params.id);
+        res.status(200).json(successResponse(members));
+      } catch (err) {
+        next(err);
+      }
+    },
+
     async addMember(req: Request, res: Response, next: NextFunction): Promise<void> {
       try {
         const { email, role } = req.body;
@@ -85,6 +103,49 @@ export function createWorkspaceController(): WorkspaceController {
         const { role } = req.body;
         await workspaceService.updateMemberRole(req.params.id, req.params.userId, role);
         res.status(200).json(successResponse({ message: 'Role updated' }));
+      } catch (err) {
+        next(err);
+      }
+    },
+
+    async listOptions(req: Request, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const configs = await optionsService.listConfigurations(req.params.id, env.ENCRYPTION_MASTER_KEY);
+        res.status(200).json(successResponse(configs));
+      } catch (err) {
+        next(err);
+      }
+    },
+
+    async upsertOption(req: Request, res: Response, next: NextFunction): Promise<void> {
+      try {
+        await optionsService.upsertConfiguration(
+          req.params.id,
+          req.params.serviceKey,
+          resolveServiceGroup(req.params.serviceKey),
+          req.body.values,
+          req.user!.userId,
+          env.ENCRYPTION_MASTER_KEY,
+        );
+        res.status(200).json(successResponse({ message: 'Configuration saved' }));
+      } catch (err) {
+        next(err);
+      }
+    },
+
+    async deleteOption(req: Request, res: Response, next: NextFunction): Promise<void> {
+      try {
+        await optionsService.deleteConfiguration(req.params.id, req.params.serviceKey);
+        res.status(200).json(successResponse({ message: 'Configuration deleted' }));
+      } catch (err) {
+        next(err);
+      }
+    },
+
+    async testOptionConnection(req: Request, res: Response, next: NextFunction): Promise<void> {
+      try {
+        const result = await optionsService.testConnection(req.params.id, req.params.serviceKey, env.ENCRYPTION_MASTER_KEY);
+        res.status(200).json(successResponse(result));
       } catch (err) {
         next(err);
       }

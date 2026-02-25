@@ -121,8 +121,21 @@ export default function SearchResultsView() {
           </div>
         )}
 
+        {/* Error state */}
+        {!search.loading && search.error && (
+          <div className="text-center py-8" role="alert">
+            <p className="text-red-500 text-sm">{search.error}</p>
+            <button
+              onClick={() => search.executeSearch()}
+              className="mt-4 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {/* Results */}
-        {!search.loading && search.results.length > 0 && (
+        {!search.loading && !search.error && search.results.length > 0 && (
           <div className="space-y-3">
             {search.results.map((result) => (
               <SearchResultCard
@@ -135,7 +148,7 @@ export default function SearchResultsView() {
         )}
 
         {/* Empty state */}
-        {!search.loading && search.results.length === 0 && search.query && (
+        {!search.loading && !search.error && search.results.length === 0 && search.query && (
           <div className="text-center py-12">
             <p className="text-gray-500 text-sm">
               No results found for &quot;{sanitizeHtml(search.query)}&quot;
@@ -146,15 +159,8 @@ export default function SearchResultsView() {
           </div>
         )}
 
-        {/* Error state */}
-        {search.error && (
-          <div className="text-center py-8">
-            <p className="text-red-500 text-sm">{search.error}</p>
-          </div>
-        )}
-
         {/* Pagination */}
-        {!search.loading && search.totalPages > 1 && (
+        {!search.loading && !search.error && search.totalPages > 1 && (
           <SearchPagination
             page={search.page}
             totalPages={search.totalPages}

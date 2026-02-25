@@ -24,14 +24,32 @@ export default function MemberSettings() {
   const [role, setRole] = useState<WorkspaceRole>('member');
   const [isInviting, setIsInviting] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<{ userId: string; name: string } | null>(null);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [membersError, setMembersError] = useState<string | null>(null);
+
+  const loadMembers = async () => {
+    if (!activeWorkspaceId) return;
+    setIsLoadingMembers(true);
+    setMembersError(null);
+    try {
+      await fetchMembers(activeWorkspaceId);
+    } catch (err: unknown) {
+      const message =
+        typeof err === 'object' && err !== null && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : err instanceof Error
+            ? err.message
+            : 'Failed to load members.';
+      setMembersError(message);
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
 
   useEffect(() => {
-    if (activeWorkspaceId) {
-      fetchMembers(activeWorkspaceId).catch(() =>
-        addToast('error', 'Failed to load members.'),
-      );
-    }
-  }, [activeWorkspaceId, fetchMembers, addToast]);
+    loadMembers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWorkspaceId]);
 
   if (!activeWorkspaceId) {
     return <p className="text-gray-500 text-sm">No workspace selected.</p>;
@@ -75,102 +93,140 @@ export default function MemberSettings() {
     }
   };
 
+  const inviteForm = canManage && (
+    <form onSubmit={handleInvite} className="flex gap-3 items-end">
+      <div className="flex-1">
+        <label htmlFor="invite-email" className="block text-sm font-medium text-gray-700 mb-1">
+          Email
+        </label>
+        <input
+          id="invite-email"
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="colleague@example.com"
+          className="w-full border rounded px-3 py-2 text-sm"
+        />
+      </div>
+      <div>
+        <label htmlFor="invite-role" className="block text-sm font-medium text-gray-700 mb-1">
+          Role
+        </label>
+        <select
+          id="invite-role"
+          value={role}
+          onChange={(e) => setRole(e.target.value as WorkspaceRole)}
+          className="border rounded px-3 py-2 text-sm"
+        >
+          {ASSIGNABLE_ROLES.map((r) => (
+            <option key={r} value={r}>{r}</option>
+          ))}
+        </select>
+      </div>
+      <button
+        type="submit"
+        disabled={isInviting || !email.trim()}
+        className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isInviting ? 'Inviting…' : 'Invite'}
+      </button>
+    </form>
+  );
+
   return (
     <div className="max-w-2xl space-y-8">
       <h2 className="text-lg font-semibold">Members</h2>
 
-      {canManage && (
-        <form onSubmit={handleInvite} className="flex gap-3 items-end">
-          <div className="flex-1">
-            <label htmlFor="invite-email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              id="invite-email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="colleague@example.com"
-              className="w-full border rounded px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label htmlFor="invite-role" className="block text-sm font-medium text-gray-700 mb-1">
-              Role
-            </label>
-            <select
-              id="invite-role"
-              value={role}
-              onChange={(e) => setRole(e.target.value as WorkspaceRole)}
-              className="border rounded px-3 py-2 text-sm"
-            >
-              {ASSIGNABLE_ROLES.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </div>
-          <button
-            type="submit"
-            disabled={isInviting || !email.trim()}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isInviting ? 'Inviting…' : 'Invite'}
-          </button>
-        </form>
+      {/* Loading state */}
+      {isLoadingMembers && (
+        <div className="flex items-center gap-2 py-8 justify-center" aria-label="Loading members">
+          <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span className="text-sm text-gray-500">Loading members…</span>
+        </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left text-gray-500">
-              <th className="py-2 pr-4 font-medium">Name</th>
-              <th className="py-2 pr-4 font-medium">Email</th>
-              <th className="py-2 pr-4 font-medium">Role</th>
-              <th className="py-2 pr-4 font-medium">Joined</th>
-              {canManage && <th className="py-2 font-medium">Actions</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {members.map((m) => (
-              <tr key={m.userId} className="border-b last:border-0">
-                <td className="py-2 pr-4">{m.displayName}</td>
-                <td className="py-2 pr-4 text-gray-500">{m.email}</td>
-                <td className="py-2 pr-4">
-                  {canManage ? (
-                    <select
-                      value={m.role}
-                      onChange={(e) => handleRoleChange(m.userId, e.target.value as WorkspaceRole)}
-                      className="border rounded px-2 py-1 text-sm"
-                      aria-label={`Role for ${m.displayName}`}
-                    >
-                      {ASSIGNABLE_ROLES.map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className="capitalize">{m.role}</span>
-                  )}
-                </td>
-                <td className="py-2 pr-4 text-gray-500">{formatDate(m.joinedAt)}</td>
-                {canManage && (
-                  <td className="py-2">
-                    <button
-                      onClick={() => setRemoveTarget({ userId: m.userId, name: m.displayName })}
-                      className="text-red-600 hover:text-red-800 text-sm"
-                    >
-                      Remove
-                    </button>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {members.length === 0 && (
-          <p className="text-gray-400 text-sm py-4 text-center">No members yet.</p>
-        )}
-      </div>
+      {/* Error state */}
+      {!isLoadingMembers && membersError && (
+        <div className="text-center py-8 border border-red-200 rounded-lg bg-red-50" role="alert">
+          <p className="text-red-600 text-sm">{membersError}</p>
+          <button
+            onClick={loadMembers}
+            className="mt-4 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!isLoadingMembers && !membersError && members.length === 0 && (
+        <div className="space-y-6">
+          {inviteForm}
+          <p className="text-gray-500 text-sm py-4 text-center">
+            No other members yet. Invite someone to get started.
+          </p>
+        </div>
+      )}
+
+      {/* Members loaded successfully */}
+      {!isLoadingMembers && !membersError && members.length > 0 && (
+        <>
+          {inviteForm}
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-gray-500">
+                  <th className="py-2 pr-4 font-medium">Name</th>
+                  <th className="py-2 pr-4 font-medium">Email</th>
+                  <th className="py-2 pr-4 font-medium">Role</th>
+                  <th className="py-2 pr-4 font-medium">Joined</th>
+                  {canManage && <th className="py-2 font-medium">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {members.map((m) => (
+                  <tr key={m.userId} className="border-b last:border-0">
+                    <td className="py-2 pr-4">{m.displayName}</td>
+                    <td className="py-2 pr-4 text-gray-500">{m.email}</td>
+                    <td className="py-2 pr-4">
+                      {canManage ? (
+                        <select
+                          value={m.role}
+                          onChange={(e) => handleRoleChange(m.userId, e.target.value as WorkspaceRole)}
+                          className="border rounded px-2 py-1 text-sm"
+                          aria-label={`Role for ${m.displayName}`}
+                        >
+                          {ASSIGNABLE_ROLES.map((r) => (
+                            <option key={r} value={r}>{r}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="capitalize">{m.role}</span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-4 text-gray-500">{formatDate(m.joinedAt)}</td>
+                    {canManage && (
+                      <td className="py-2">
+                        <button
+                          onClick={() => setRemoveTarget({ userId: m.userId, name: m.displayName })}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
       <ConfirmDialog
         open={!!removeTarget}
@@ -183,3 +239,5 @@ export default function MemberSettings() {
     </div>
   );
 }
+
+

@@ -20,6 +20,7 @@ const WorkspaceSettings = lazy(() => import('@/components/settings/WorkspaceSett
 const MemberSettings = lazy(() => import('@/components/settings/MemberSettings'));
 const CredentialSettings = lazy(() => import('@/components/settings/CredentialSettings'));
 const BillingSettings = lazy(() => import('@/components/settings/BillingSettings'));
+const OptionsSettings = lazy(() => import('@/components/settings/OptionsSettings'));
 
 function AppContent() {
   useOnlineStatus();
@@ -99,6 +100,14 @@ function AppContent() {
                   element={
                     <Suspense fallback={<LoadingFallback />}>
                       <CredentialSettings />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="options"
+                  element={
+                    <Suspense fallback={<LoadingFallback />}>
+                      <OptionsSettings />
                     </Suspense>
                   }
                 />

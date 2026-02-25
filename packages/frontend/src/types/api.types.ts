@@ -72,3 +72,18 @@ export interface CreditTransaction {
   description: string;
   createdAt: string;
 }
+
+export interface ServiceConfiguration {
+  serviceKey: string;
+  serviceGroup: string;
+  maskedValues: Record<string, string>;
+  status: 'configured' | 'not_configured' | 'error';
+  lastTestedAt: string | null;
+  updatedAt: string;
+}
+
+export interface ConnectionTestResult {
+  success: boolean;
+  responseTimeMs: number;
+  error?: string;
+}

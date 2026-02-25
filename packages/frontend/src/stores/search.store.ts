@@ -7,6 +7,53 @@ import type {
 } from '@/types/search.types';
 import * as searchApi from '@/api/search.api';
 
+/**
+ * Extract a human-readable error message from any thrown value.
+ * Handles ApiError objects ({ status, message }), Error instances,
+ * strings, and arbitrary values. Never returns '[object Object]'.
+ */
+export function extractErrorMessage(err: unknown): string {
+  // Network error detection: ApiError-shaped with status 0 means no connectivity
+  if (
+    typeof err === 'object' &&
+    err !== null &&
+    'status' in err &&
+    (err as { status: unknown }).status === 0
+  ) {
+    return 'Unable to connect to the search service. Check your connection and try again.';
+  }
+
+  // 500 server error: search service is down or broken
+  if (
+    typeof err === 'object' &&
+    err !== null &&
+    'status' in err &&
+    (err as { status: unknown }).status === 500
+  ) {
+    return 'Search service is unavailable. Please try again later.';
+  }
+
+  // ApiError-shaped object with a message property
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    const msg = (err as { message: unknown }).message;
+    if (typeof msg === 'string' && msg.length > 0) {
+      return msg;
+    }
+  }
+
+  // Standard Error instance
+  if (err instanceof Error) {
+    return err.message || 'An unexpected error occurred';
+  }
+
+  // Primitive string
+  if (typeof err === 'string' && err.length > 0) {
+    return err;
+  }
+
+  return 'An unexpected error occurred';
+}
+
 export interface SearchState {
   // Query state
   query: string;
@@ -89,7 +136,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       });
     } catch (err) {
       set({
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
         loading: false,
       });
     }

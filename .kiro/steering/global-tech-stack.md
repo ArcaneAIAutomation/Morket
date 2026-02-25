@@ -40,7 +40,7 @@ terraform/     # AWS IaC (Module 7 — COMPLETE)
 - **CRM Integrations**: Salesforce & HubSpot via OAuth2 with encrypted token storage
 - **Observability**: Structured JSON logger, in-memory metrics, /readiness and /metrics endpoints
 - **Distributed Tracing**: OpenTelemetry SDK with auto-instrumentation for HTTP, Express, PostgreSQL, Redis; OTLP exporter; log-trace correlation via trace_id/span_id
-- **Migrations**: 22 sequential numbered files under `packages/backend/migrations/`
+- **Migrations**: 23 sequential numbered files under `packages/backend/migrations/`
 
 ## Frontend (packages/frontend) — COMPLETE
 - **Framework**: React 18+ with TypeScript (strict mode)
@@ -52,9 +52,9 @@ terraform/     # AWS IaC (Module 7 — COMPLETE)
 - **HTTP Client**: Axios with dual instances (30s standard, 120s enrichment), auto token refresh, envelope unwrapping
 - **Validation**: Zod for client-side form schemas
 - **Styling**: Tailwind CSS 3 with AG Grid theme overrides
-- **Testing**: Vitest + Testing Library + MSW (API mocking) + fast-check (8 property test suites)
+- **Testing**: Vitest + Testing Library + MSW (API mocking) + fast-check (12 property test suites)
 - **Web Workers**: CSV parse/generate off main thread for datasets ≥10k rows
-- **Features**: Spreadsheet with undo (50-deep), auto-save (30s), context menus, column management, CSV import/export, enrichment job polling (5s), enrichment panel slide-over with "Enrich Selected" toolbar button, analytics dashboard (enrichment/scraping/credits tabs), full-text search with facets and typeahead, role-based UI permissions, offline detection, settings pages (workspace/billing/credentials/members)
+- **Features**: Spreadsheet with undo (50-deep), auto-save (30s), context menus, column management, CSV import/export, enrichment job polling (5s), enrichment panel slide-over with "Enrich Selected" toolbar button, analytics dashboard (enrichment/scraping/credits tabs), full-text search with facets and typeahead, role-based UI permissions, offline detection, settings pages (workspace/billing/credentials/members/options)
 
 ## Scraping Microservices (packages/scraper) — COMPLETE
 - **Language**: Python 3.11+
@@ -113,3 +113,4 @@ terraform/     # AWS IaC (Module 7 — COMPLETE)
 - **Dependencies**: All versions pinned (no `^`/`~`/`>=` prefixes)
 - **Docker Compose**: No socket/host mounts, read-only root filesystem + no-new-privileges on app containers
 - **Property tests**: 26 correctness properties with 100+ iterations each across backend (fast-check), frontend (fast-check), and scraper (hypothesis)
+- **Backend property tests**: members-list, options-encryption, options-masking, options-audit, options-credential-sync (in addition to existing security properties)

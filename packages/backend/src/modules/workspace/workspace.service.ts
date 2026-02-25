@@ -5,7 +5,7 @@ import * as workspaceRepo from './workspace.repository';
 import * as membershipRepo from './membership.repository';
 import { findByEmail } from '../auth/user.repository';
 import type { Workspace } from './workspace.repository';
-import type { WorkspaceMembership } from './membership.repository';
+import type { WorkspaceMembership, MemberWithUser } from './membership.repository';
 
 export async function create(name: string, ownerId: string): Promise<Workspace> {
   const pool = getPool();
@@ -79,6 +79,14 @@ export async function deleteWorkspace(workspaceId: string): Promise<void> {
     throw new NotFoundError('Workspace not found');
   }
   await workspaceRepo.deleteWorkspace(workspaceId);
+}
+
+export async function listMembers(workspaceId: string): Promise<MemberWithUser[]> {
+  const workspace = await workspaceRepo.findById(workspaceId);
+  if (!workspace) {
+    throw new NotFoundError('Workspace not found');
+  }
+  return membershipRepo.findAllWithUsers(workspaceId);
 }
 
 export async function addMember(

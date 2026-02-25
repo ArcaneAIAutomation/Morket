@@ -9,12 +9,28 @@ export interface WorkspaceMembership {
   acceptedAt: Date | null;
 }
 
+export interface MemberWithUser {
+  userId: string;
+  email: string;
+  displayName: string;
+  role: WorkspaceRole;
+  joinedAt: Date | null;
+}
+
 interface MembershipRow {
   user_id: string;
   workspace_id: string;
   role: WorkspaceRole;
   invited_at: Date;
   accepted_at: Date | null;
+}
+
+interface MemberWithUserRow {
+  user_id: string;
+  email: string;
+  display_name: string;
+  role: WorkspaceRole;
+  joined_at: Date | null;
 }
 
 function toMembership(row: MembershipRow): WorkspaceMembership {
@@ -78,6 +94,26 @@ export async function findAllForWorkspace(
     [workspaceId],
   );
   return result.rows.map(toMembership);
+}
+
+export async function findAllWithUsers(
+  workspaceId: string,
+): Promise<MemberWithUser[]> {
+  const result = await query<MemberWithUserRow>(
+    `SELECT wm.user_id, u.email, u.display_name, wm.role, wm.accepted_at AS joined_at
+     FROM workspace_memberships wm
+     JOIN users u ON u.id = wm.user_id
+     WHERE wm.workspace_id = $1
+     ORDER BY wm.invited_at ASC`,
+    [workspaceId],
+  );
+  return result.rows.map((row) => ({
+    userId: row.user_id,
+    email: row.email,
+    displayName: row.display_name,
+    role: row.role,
+    joinedAt: row.joined_at,
+  }));
 }
 
 export async function updateRole(

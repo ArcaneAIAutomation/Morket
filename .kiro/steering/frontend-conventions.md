@@ -67,7 +67,7 @@ src/
 - Public routes: `/login`, `/register`
 - Protected routes wrapped in `<AuthGuard>`: `/workspaces/:workspaceId/*`
 - Workspace sub-routes: `spreadsheet` (default), `jobs`, `analytics`, `search`, `settings/*`
-- Settings nested routes: `workspace` (default), `members`, `credentials`, `billing`
+- Settings nested routes: `workspace` (default), `members`, `credentials`, `billing`, `options`
 - Lazy-loaded: AnalyticsDashboard, SearchResultsView, JobMonitorView, all settings pages (via `React.lazy` + `Suspense`)
 - Shared `LoadingFallback` component for all Suspense boundaries
 - Last active workspace persisted to localStorage for redirect
@@ -147,7 +147,7 @@ src/
 ### Property-Based Tests
 - Located in `tests/property/`
 - Use `fast-check` for property generation
-- 8 property test suites:
+- 12 property test suites:
   - `api-envelope.property.test.ts` — envelope unwrapping invariants
   - `csv-roundtrip.property.test.ts` — CSV parse → generate roundtrip
   - `enrichment-cost.property.test.ts` — credit cost calculation
@@ -156,6 +156,10 @@ src/
   - `sort-filter.property.test.ts` — sort/filter model consistency
   - `toast-behavior.property.test.ts` — toast queue max size and auto-dismiss
   - `security.property.test.ts` — HTML sanitization encoding, deep link parameter validation (2 property suites)
+  - `error-extraction.property.test.ts` — error message extraction from various response shapes
+  - `billing-resilience.property.test.ts` — billing section resilience to malformed/missing data
+  - `billing-independence.property.test.ts` — billing section independence (one section failure doesn't affect others)
+  - `options-validation.property.test.ts` — options form Zod validation correctness
 
 ## Shared Components (`src/components/shared/`)
 - `ErrorBoundary` — catches React render errors, shows fallback UI
@@ -167,6 +171,7 @@ src/
 ## Settings Pages (`src/components/settings/`)
 - `SettingsLayout` — tabbed settings container
 - `WorkspaceSettings` — name, slug, danger zone (delete)
-- `BillingSettings` — credit balance, plan info, transaction history
+- `BillingSettings` — credit balance, plan info, transaction history (independent per-section loading/error states)
 - `CredentialSettings` — API credential management (masked keys)
-- `MemberSettings` — member list, invite, role management
+- `MemberSettings` — member list with loading/error/empty states, invite, role management
+- `OptionsSettings` — service configuration page with 5 collapsible groups, status indicators, Zod validation, test connection UI

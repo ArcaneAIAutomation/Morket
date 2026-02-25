@@ -89,6 +89,12 @@ Some modules have additional files:
 - Use `vi.resetAllMocks()` (not `vi.clearAllMocks()`) inside property test iterations to avoid stale mock queues
 - Rate limiter state: call `_resetRateLimiterState()` in `beforeEach` for tests that touch HTTP endpoints
 - Security property tests: `tests/property/security.property.test.ts` — 26 correctness properties covering auth, RBAC, rate limiting, encryption, sanitization, logging, webhooks
+- Additional property tests:
+  - `tests/property/members-list.test.ts` — members list endpoint pagination and filtering invariants
+  - `tests/property/options-encryption.test.ts` — options encryption roundtrip correctness
+  - `tests/property/options-masking.test.ts` — options value masking never leaks full values
+  - `tests/property/options-audit.test.ts` — options CRUD audit logging completeness
+  - `tests/property/options-credential-sync.test.ts` — credential sync consistency between options and credential store
 
 ## Existing Modules
 
@@ -96,6 +102,11 @@ Some modules have additional files:
 |--------|------|--------|
 | Auth | `src/modules/auth/` | ✅ Complete |
 | Workspace | `src/modules/workspace/` | ✅ Complete |
+
+### Workspace Module Extended Files
+- `options.repository.ts` — CRUD for service_configurations table (per-workspace service key/value store)
+- `options.service.ts` — Options business logic: encryption, masking, connection testing, credential sync
+- Options routes wired in workspace routes: `GET/PUT/DELETE /:id/options`, `POST /:id/options/:serviceKey/test`
 | Credential | `src/modules/credential/` | ✅ Complete |
 | Credit | `src/modules/credit/` | ✅ Complete |
 | Enrichment | `src/modules/enrichment/` | ✅ Complete |
@@ -124,7 +135,7 @@ Some modules have additional files:
 
 ## Migrations
 
-22 sequential PostgreSQL migrations (001–022) plus ClickHouse migrations:
+22 sequential PostgreSQL migrations (001–023) plus ClickHouse migrations:
 - 001–008: Core tables (users, workspaces, memberships, refresh_tokens, api_credentials, billing, credit_transactions, indexes)
 - 009–011: Enrichment (enrichment_jobs, enrichment_records, webhook_subscriptions)
 - 012–013: Replication (dead_letter_queue, replication_triggers)
@@ -135,6 +146,7 @@ Some modules have additional files:
 - 020: Workflows (workflows, workflow_versions, workflow_runs)
 - 021: AI/ML (quality_scores)
 - 022: Team collaboration (activity_feed, audit_log, workspace_invitations)
+- 023: Service configurations (per-workspace service key/value store for Options page)
 
 ## Scraper Service Conventions (packages/scraper)
 

@@ -9,6 +9,8 @@ import {
   updateRoleSchema,
   workspaceParamsSchema,
   memberParamsSchema,
+  optionsParamsSchema,
+  upsertOptionsSchema,
 } from './workspace.schemas';
 
 export function createWorkspaceRoutes(): Router {
@@ -45,6 +47,14 @@ export function createWorkspaceRoutes(): Router {
     controller.delete,
   );
 
+  // GET /:id/members  (member+)
+  router.get(
+    '/:id/members',
+    validate({ params: workspaceParamsSchema }),
+    requireRole('member'),
+    controller.listMembers,
+  );
+
   // POST /:id/members  (admin+)
   router.post(
     '/:id/members',
@@ -67,6 +77,40 @@ export function createWorkspaceRoutes(): Router {
     validate({ params: memberParamsSchema, body: updateRoleSchema }),
     requireRole('admin'),
     controller.updateMemberRole,
+  );
+
+  // --- Options routes (admin+) ---
+
+  // GET /:id/options  (admin+)
+  router.get(
+    '/:id/options',
+    validate({ params: workspaceParamsSchema }),
+    requireRole('admin'),
+    controller.listOptions,
+  );
+
+  // PUT /:id/options/:serviceKey  (admin+)
+  router.put(
+    '/:id/options/:serviceKey',
+    validate({ params: optionsParamsSchema, body: upsertOptionsSchema }),
+    requireRole('admin'),
+    controller.upsertOption,
+  );
+
+  // DELETE /:id/options/:serviceKey  (admin+)
+  router.delete(
+    '/:id/options/:serviceKey',
+    validate({ params: optionsParamsSchema }),
+    requireRole('admin'),
+    controller.deleteOption,
+  );
+
+  // POST /:id/options/:serviceKey/test  (admin+)
+  router.post(
+    '/:id/options/:serviceKey/test',
+    validate({ params: optionsParamsSchema }),
+    requireRole('admin'),
+    controller.testOptionConnection,
   );
 
   return router;

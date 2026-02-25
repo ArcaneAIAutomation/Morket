@@ -4,6 +4,7 @@ const SETTINGS_TABS = [
   { to: 'workspace', label: 'Workspace' },
   { to: 'members', label: 'Members' },
   { to: 'credentials', label: 'Credentials' },
+  { to: 'options', label: 'Options' },
   { to: 'billing', label: 'Billing' },
 ];
 
